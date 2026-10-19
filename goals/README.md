@@ -28,20 +28,10 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 15
-- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
-- 🔵 **In Progress (Claimed)**: 1
-- ⛔ **Blocked on Prerequisites**: 1
-- 🟢 **Implemented**: 13 (10 verified 📜, 3 unverified)
+- 🟡 **Ready to Execute (Pending)**: 1 (0 independent ⚡, 1 unblocked 🔗)
+- 🟢 **Implemented**: 14 (10 verified 📜, 4 unverified)
 - 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 187/338 completed (55%)
-
----
-
-## 🔵 In Progress (Claimed Goals)
-
-| Goal Package | Tier | Mode | Agent | Status & Note | Started |
-| :--- | :---: | :---: | :--- | :--- | :--- |
-| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🎯 Immediate` | `🔗 Dep` | `@commandcode` | Implementing release plumbing, asset contract, signing, and private v0.1.0 verification | 0s ago |
+- 📋 **Execution Tasks Progress**: 277/338 completed (81%)
 
 ---
 
@@ -49,7 +39,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#5)` | Prereqs: standalone-v0-1-0-release | Validate Demand with Five User Interviews and a Public Install Test — Run the cheapest credible demand test before adding any feature: 1. **Five struc... | `/goal goals/public-install-demand-validation/goal.md` |
+| [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🚢 SHIP 🔗 Ready (#5)` | Deps met: standalone-v0-1-0-release | Validate Demand with Five User Interviews and a Public Install Test — Run the cheapest credible demand test before adding any feature: 1. **Five struc... | `/goal goals/public-install-demand-validation/goal.md` |
 
 ---
 
@@ -69,4 +59,5 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `ea9a60d5e17ef35d1b5c57cd4a8050bc4980dbc5` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `f4f1f9339befb56ef5400c6db09a3f354e7109a8` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `602fa2f57a75f47311499cd7a498f9532641ab33` |
+| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🔗 Dep` | 🚢 SHIP | unverified | Git Commit | `3b204e5` |
 | [`updater-boundary-tests`](updater-boundary-tests/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Audit Receipt | `9170277c74e51b21d35df4dd82757a2cd0f5df39` |
