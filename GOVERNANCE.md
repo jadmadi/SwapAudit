@@ -36,7 +36,7 @@ Proposals introducing any of the following are considered out of scope:
 1. **Cloud-Hosted Telemetry**: swapaudit is 100% offline-capable and privacy-respecting. It does not phone home, report anonymous usage statistics, or require external accounts.
 2. **Persistent Background Services**: swapaudit is an on-demand CLI tool. It does not install recurring kernel hooks or background listeners.
 3. **Web or GUI Frameworks**: swapaudit is a terminal-native tool. Embedding Electron, Tauri, or browser runtimes into the core binary is out of scope.
-4. **Unsafe Automated Process Killing**: swapaudit never terminates system daemons or active user shells. Cleanups require explicit flags and confirmation prompts.
+4. **Unsafe Automated Process Killing**: swapaudit never terminates system daemons, active user shells, systemd services, or processes owned by another UID unless `--all-users` is explicitly set. Orphan cleanup is never implicit: `--clean-all` excludes it unless `--include-orphaned` is set. Cleanups require explicit flags and confirmation prompts.
 
 ---
 

@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `--all-users` opt-in for signaling processes owned by another UID.
+- `--include-orphaned` opt-in for including orphaned-agent cleanup with `--clean-all`.
+- UID, tty, and cgroup evidence parsing plus a fail-closed orphan classifier.
+- One-line cleanup summary with counts and skip reasons.
+- `docs/safety.md` operator safety contract and manual verification protocol.
 - LimitReader bounds (50MB binary, 1MB checksum) to protect self-updater against unbounded streams.
 - UID-scoped fallback paths for temporary update-check state caches.
 - Interactive reader edge-case and live temporary pruning unit test coverage.
@@ -15,7 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Malformed proc stat and scheduler line parsing unit tests.
 
 ### Changed
+- `--clean-all` no longer includes orphaned cleanup; orphan cleanup is always explicit.
+- Dormant-cleanup prompt now warns that `SIGTERM` may lose unsaved in-memory state instead of claiming conversations are preserved.
 - Enforced fail-closed temporary file creation in build script.
+
+### Fixed
+- False-positive orphan classification for systemd-managed agents.
+- Cross-user process signaling when running as root without `--all-users`.
+- Unverified conversation-preservation claim in the destructive cleanup prompt.
 
 ## [0.1.0] - 2026-10-19
 

@@ -11,6 +11,89 @@ import (
 	"time"
 )
 
+func TestParseProcStatusUID(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    uint32
+		wantErr bool
+	}{
+		{"valid", "Name:\tcat\nUid:\t1000\t1000\t1000\t1000\n", 1000, false},
+		{"spaces", "Uid:   1001   1001   1001   1001\n", 1001, false},
+		{"missing", "Name:\tcat\n", 0, true},
+		{"malformed", "Uid:\n", 0, true},
+		{"nonnumeric", "Uid:\tabc\t1000\t1000\t1000\n", 0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseProcStatusUID(strings.NewReader(tt.content))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("ParseProcStatusUID() error = nil, want error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ParseProcStatusUID() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("ParseProcStatusUID() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReadProcUIDCurrentProcess(t *testing.T) {
+	got, err := ReadProcUID(os.Getpid())
+	if err != nil {
+		t.Fatalf("ReadProcUID(current) error = %v", err)
+	}
+	if got != uint32(os.Getuid()) {
+		t.Errorf("ReadProcUID(current) = %d, want %d", got, uint32(os.Getuid()))
+	}
+}
+
+func TestReadTTYNrAndCgroupCurrentProcess(t *testing.T) {
+	if tty := ReadTTYNr(os.Getpid()); tty < 0 {
+		t.Errorf("ReadTTYNr(current) = %d, want >= 0", tty)
+	}
+	if cgroup := ReadProcessCgroup(os.Getpid()); cgroup == "" {
+		t.Errorf("ReadProcessCgroup(current) returned empty")
+	}
+}
+
+func TestClassifyOrphanRules(t *testing.T) {
+	tests := []struct {
+		name        string
+		parentAlive bool
+		parentComm  string
+		cgroup      string
+		tty         int64
+		want        bool
+		wantReason  string
+	}{
+		{"parent alive shell", true, "bash", "/user.slice/session-2.scope", 123, false, "parent-alive"},
+		{"systemd service", false, "systemd", "/user.slice/app.service", 0, false, "systemd-service"},
+		{"reparented terminal", false, "systemd", "/user.slice/session-2.scope", 123, true, "reparented-terminal-scope"},
+		{"no controlling terminal", false, "systemd", "/user.slice/session-2.scope", 0, false, "no-controlling-terminal"},
+		{"ambiguous evidence", false, "", "/user.slice/app.slice", 123, false, "ambiguous-evidence"},
+		{"init parent scope", false, "init", "/user.slice/session-2.scope", 123, true, "reparented-terminal-scope"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reason, got := classifyOrphan(tt.parentAlive, tt.parentComm, tt.cgroup, tt.tty)
+			if got != tt.want {
+				t.Errorf("classifyOrphan() = %v, want %v", got, tt.want)
+			}
+			if reason != tt.wantReason {
+				t.Errorf("classifyOrphan() reason = %q, want %q", reason, tt.wantReason)
+			}
+		})
+	}
+}
+
 func TestParseProcStatus(t *testing.T) {
 	statusContent := `Name:	cat
 Umask:	0022
@@ -148,21 +231,6 @@ func TestCalcProcessAge(t *testing.T) {
 	}
 	if ageZero := CalcProcessAge(0, bootTime); ageZero != 0 {
 		t.Errorf("CalcProcessAge(0) = %v, want 0", ageZero)
-	}
-}
-
-func TestIsProcessOrphaned(t *testing.T) {
-	if !IsProcessOrphaned(1) {
-		t.Errorf("IsProcessOrphaned(1) = false, want true")
-	}
-	if !IsProcessOrphaned(0) {
-		t.Errorf("IsProcessOrphaned(0) = false, want true")
-	}
-	if !IsProcessOrphaned(-1) {
-		t.Errorf("IsProcessOrphaned(-1) = false, want true")
-	}
-	if !IsProcessOrphaned(9999999) {
-		t.Errorf("IsProcessOrphaned(9999999) = false, want true")
 	}
 }
 

@@ -70,7 +70,7 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 		age := proc.CalcProcessAge(startTicks, bootTime)
 		lastActive := proc.ReadProcessLastActive(pid, uptimeMs)
 		lastActiveAt := now.Add(-lastActive)
-		isOrphaned := proc.IsProcessOrphaned(ppid)
+		_, isOrphaned := proc.ClassifyOrphan(pid, ppid)
 
 		cat, cleanable := triage.CategorizeProcess(comm, argv, pid, ppid, isOrphaned, lastActive, idleThreshold)
 
@@ -114,6 +114,26 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 	return items
 }
 
+// ResolveCleanupFlags maps the broad cleanup flags to the explicit categories.
+// Orphan cleanup is never implicit: --clean-all does not include it.
+func ResolveCleanupFlags(cleanAll, cleanUntouched, cleanAbandoned, cleanDormant, cleanOrphaned, includeOrphaned bool) cleaner.CleanupFlags {
+	flags := cleaner.CleanupFlags{
+		Untouched: cleanUntouched,
+		Abandoned: cleanAbandoned,
+		Dormant:   cleanDormant,
+		Orphaned:  cleanOrphaned,
+	}
+	if cleanAll {
+		flags.Untouched = true
+		flags.Abandoned = true
+		flags.Dormant = true
+	}
+	if includeOrphaned && (cleanAll || cleanOrphaned) {
+		flags.Orphaned = true
+	}
+	return flags
+}
+
 // Run parses CLI flags and executes the swapaudit command workflow.
 func Run(args []string) int {
 	if len(args) > 0 {
@@ -136,23 +156,25 @@ func Run(args []string) int {
 	fs.SetOutput(io.Discard)
 
 	var (
-		sortBy         = fs.String("sort", "size", "Sort column: 'size' or 'age'")
-		cleanUntouched = fs.Bool("clean-untouched", false, "Clean untouched /tmp build and compile caches")
-		cleanAbandoned = fs.Bool("clean-abandoned", false, "Clean abandoned /tmp test and review runs")
-		cleanDormant   = fs.Bool("clean-dormant", false, "Stop dormant agent sessions")
-		cleanOrphaned  = fs.Bool("clean-orphaned", false, "End orphaned agent sessions (parent shell deceased)")
-		cleanTmp       = fs.Bool("clean-tmp", false, "Clean all stale /tmp caches (untouched + abandoned)")
-		cleanAll       = fs.Bool("clean-all", false, "Clean all safe cleanable groups")
-		dryRun         = fs.Bool("dry-run", false, "Simulate cleanup actions without deleting or stopping")
-		yes            = fs.Bool("yes", false, "Automatically answer yes to confirmation prompts")
-		maxAge         = fs.Duration("max-age", 12*time.Hour, "Cutoff age for stale /tmp folders")
-		idleThreshold  = fs.Duration("idle-threshold", 2*time.Hour, "Idle time threshold for dormant agents")
-		limit          = fs.Int("limit", 12, "Maximum rows to show in the main occupants table")
-		showAll        = fs.Bool("all", false, "Show all individual processes without aggregation")
-		noColor        = fs.Bool("no-color", false, "Disable colored output")
-		ascii          = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
-		showVersion    = fs.Bool("version", false, "Print swapaudit version and exit")
-		noUpdateCheck  = fs.Bool("no-update-check", false, "Disable daily release update check")
+		sortBy          = fs.String("sort", "size", "Sort column: 'size' or 'age'")
+		cleanUntouched  = fs.Bool("clean-untouched", false, "Clean untouched /tmp build and compile caches")
+		cleanAbandoned  = fs.Bool("clean-abandoned", false, "Clean abandoned /tmp test and review runs")
+		cleanDormant    = fs.Bool("clean-dormant", false, "Stop dormant agent sessions")
+		cleanOrphaned   = fs.Bool("clean-orphaned", false, "End orphaned agent sessions (evidence-gated)")
+		cleanTmp        = fs.Bool("clean-tmp", false, "Clean all stale /tmp caches (untouched + abandoned)")
+		cleanAll        = fs.Bool("clean-all", false, "Clean untouched, abandoned, and dormant groups")
+		includeOrphaned = fs.Bool("include-orphaned", false, "Include orphaned cleanup with --clean-all")
+		allUsers        = fs.Bool("all-users", false, "Allow signaling processes owned by other UIDs")
+		dryRun          = fs.Bool("dry-run", false, "Simulate cleanup actions without deleting or stopping")
+		yes             = fs.Bool("yes", false, "Automatically answer yes to confirmation prompts")
+		maxAge          = fs.Duration("max-age", 12*time.Hour, "Cutoff age for stale /tmp folders")
+		idleThreshold   = fs.Duration("idle-threshold", 2*time.Hour, "Idle time threshold for dormant agents")
+		limit           = fs.Int("limit", 12, "Maximum rows to show in the main occupants table")
+		showAll         = fs.Bool("all", false, "Show all individual processes without aggregation")
+		noColor         = fs.Bool("no-color", false, "Disable colored output")
+		ascii           = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
+		showVersion     = fs.Bool("version", false, "Print swapaudit version and exit")
+		noUpdateCheck   = fs.Bool("no-update-check", false, "Disable daily release update check")
 	)
 	var customTmpPatterns stringSliceFlag
 	fs.Var(&customTmpPatterns, "tmp-pattern", "Additional /tmp pattern to identify artifacts (repeatable)")
@@ -223,20 +245,22 @@ func Run(args []string) int {
 	PrintMainTable(items, *sortBy, *limit, *showAll)
 	PrintCategorySummary(items)
 
-	// Consolidate cleanup actions
-	if *cleanAll {
-		*cleanUntouched = true
-		*cleanAbandoned = true
-		*cleanDormant = true
-		*cleanOrphaned = true
+	// Consolidate cleanup actions. Orphan cleanup is always opt-in.
+	if *includeOrphaned && !*cleanAll && !*cleanOrphaned {
+		fmt.Fprintln(os.Stderr, "warning: --include-orphaned has no effect without --clean-all or --clean-orphaned")
 	}
+	flags := ResolveCleanupFlags(*cleanAll, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *includeOrphaned)
 	if *cleanTmp {
-		*cleanUntouched = true
-		*cleanAbandoned = true
+		flags.Untouched = true
+		flags.Abandoned = true
 	}
 
-	if *cleanUntouched || *cleanAbandoned || *cleanDormant || *cleanOrphaned {
-		cleaner.ExecuteCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
+	if flags.Untouched || flags.Abandoned || flags.Dormant || flags.Orphaned {
+		cleaner.ExecuteCleanup(items, flags, cleaner.CleanupOptions{
+			DryRun:   *dryRun,
+			Yes:      *yes,
+			AllUsers: *allUsers,
+		})
 	} else {
 		PrintQuickCommands()
 	}

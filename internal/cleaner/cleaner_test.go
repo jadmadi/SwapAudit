@@ -33,7 +33,7 @@ func TestPruneTmpTargetsDryRun(t *testing.T) {
 	}
 	os.Stdout = w
 
-	reclaimed := PruneTmpTargets(targets, "Test Targets", "Prompt?", true, false, 40, "[dry-run] ")
+	reclaimed, _ := PruneTmpTargets(targets, "Test Targets", "Prompt?", CleanupOptions{DryRun: true, PathWidth: 40, Prefix: "[dry-run] "})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -77,7 +77,7 @@ func TestPruneTmpTargetsUnsafeGuards(t *testing.T) {
 		{Path: "relative/path", SizeBytes: 100},
 		{Path: symlinkPath, SizeBytes: 100},
 	}
-	reclaimed := PruneTmpTargets(targets, "Unsafe Targets", "Prompt?", false, true, 40, "")
+	reclaimed, _ := PruneTmpTargets(targets, "Unsafe Targets", "Prompt?", CleanupOptions{Yes: true, PathWidth: 40})
 	if reclaimed != 0 {
 		t.Errorf("PruneTmpTargets() reclaimed unsafe targets = %d, want 0", reclaimed)
 	}
@@ -99,7 +99,7 @@ func TestKillProcessTargetsUnsafeGuards(t *testing.T) {
 		{PID: os.Getpid(), Name: "swapaudit-self", SwapBytes: 1024 * 1024},
 	}
 
-	reclaimed := KillProcessTargets(targets, "Unsafe PIDs", "Prompt?", false, true, 40, "")
+	reclaimed, _ := KillProcessTargets(targets, "Unsafe PIDs", "Prompt?", CleanupOptions{Yes: true, PathWidth: 40})
 	if reclaimed != 0 {
 		t.Errorf("KillProcessTargets() reclaimed unsafe PIDs = %d, want 0", reclaimed)
 	}
@@ -122,7 +122,11 @@ func TestKillProcessTargetsDryRun(t *testing.T) {
 	}
 	os.Stdout = w
 
-	reclaimed := KillProcessTargets(targets, "Agent Processes", "Kill?", true, false, 40, "[dry-run] ")
+	oldReadUID := readProcessUID
+	readProcessUID = func(pid int) (uint32, error) { return uint32(os.Getuid()), nil }
+	defer func() { readProcessUID = oldReadUID }()
+
+	reclaimed, _ := KillProcessTargets(targets, "Agent Processes", "Kill?", CleanupOptions{DryRun: true, PathWidth: 40, Prefix: "[dry-run] "})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -181,7 +185,11 @@ func TestExecuteCleanupDryRun(t *testing.T) {
 	}
 	os.Stdout = w
 
-	ExecuteCleanup(items, true, true, true, true, true, true)
+	oldReadUID := readProcessUID
+	readProcessUID = func(pid int) (uint32, error) { return uint32(os.Getuid()), nil }
+	defer func() { readProcessUID = oldReadUID }()
+
+	ExecuteCleanup(items, CleanupFlags{Untouched: true, Abandoned: true, Dormant: true, Orphaned: true}, CleanupOptions{DryRun: true, Yes: true})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -240,6 +248,145 @@ func TestAskConfirmationReaderVariants(t *testing.T) {
 	}
 }
 
+func TestKillProcessTargetsUIDMismatch(t *testing.T) {
+	oldReadUID := readProcessUID
+	readProcessUID = func(pid int) (uint32, error) { return uint32(os.Getuid()) + 1, nil }
+	defer func() { readProcessUID = oldReadUID }()
+
+	targets := []model.SwapItem{
+		{PID: 99999, Name: "other-user-agent", SwapBytes: 1024 * 1024 * 20, StartTicks: 12345},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	reclaimed, stats := KillProcessTargets(targets, "UID Mismatch", "Kill?", CleanupOptions{Yes: true, PathWidth: 40})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if reclaimed != 0 {
+		t.Errorf("reclaimed = %d, want 0", reclaimed)
+	}
+	if stats.Reasons["uid-mismatch"] != 1 {
+		t.Errorf("uid-mismatch count = %d, want 1; stats=%+v", stats.Reasons["uid-mismatch"], stats)
+	}
+	if !strings.Contains(output, "owned by UID") {
+		t.Errorf("expected UID mismatch output, got: %s", output)
+	}
+}
+
+func TestKillProcessTargetsAllUsersDryRun(t *testing.T) {
+	oldReadUID := readProcessUID
+	readProcessUID = func(pid int) (uint32, error) { return uint32(os.Getuid()) + 1, nil }
+	defer func() { readProcessUID = oldReadUID }()
+
+	targets := []model.SwapItem{
+		{PID: 99999, Name: "other-user-agent", SwapBytes: 1024 * 1024 * 20, StartTicks: 12345},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	reclaimed, stats := KillProcessTargets(targets, "All Users", "Kill?", CleanupOptions{
+		DryRun: true, Yes: true, AllUsers: true, PathWidth: 40, Prefix: "[dry-run] ",
+	})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if reclaimed != 1024*1024*20 {
+		t.Errorf("reclaimed = %d, want %d", reclaimed, 1024*1024*20)
+	}
+	if stats.Ended != 1 {
+		t.Errorf("ended = %d, want 1", stats.Ended)
+	}
+	if !strings.Contains(output, "WARNING: --all-users") || !strings.Contains(output, "ended") {
+		t.Errorf("expected all-users warning and ended row, got: %s", output)
+	}
+}
+
+func TestKillProcessTargetsUIDUnreadable(t *testing.T) {
+	oldReadUID := readProcessUID
+	readProcessUID = func(pid int) (uint32, error) { return 0, os.ErrNotExist }
+	defer func() { readProcessUID = oldReadUID }()
+
+	targets := []model.SwapItem{
+		{PID: 99999, Name: "unknown-owner", SwapBytes: 1024 * 1024},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	reclaimed, stats := KillProcessTargets(targets, "Unreadable UID", "Kill?", CleanupOptions{DryRun: true, Yes: true, PathWidth: 40})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if reclaimed != 0 {
+		t.Errorf("reclaimed = %d, want 0", reclaimed)
+	}
+	if stats.Reasons["uid-unreadable"] != 1 {
+		t.Errorf("uid-unreadable count = %d, want 1; stats=%+v", stats.Reasons["uid-unreadable"], stats)
+	}
+	if !strings.Contains(output, "UID unavailable") {
+		t.Errorf("expected UID unavailable output, got: %s", output)
+	}
+}
+
+func TestExecuteCleanupSummaryReasons(t *testing.T) {
+	items := []model.SwapItem{
+		{Category: model.CatUntouchedCache, Cleanable: true, Path: "/etc/passwd", SizeBytes: 10},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	ExecuteCleanup(items, CleanupFlags{Untouched: true}, CleanupOptions{DryRun: true, Yes: true})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if !strings.Contains(output, "Cleanup summary (dry-run)") {
+		t.Errorf("expected dry-run cleanup summary, got: %s", output)
+	}
+	if !strings.Contains(output, "path-rejected") {
+		t.Errorf("expected path-rejected skip reason, got: %s", output)
+	}
+}
+
 func TestPruneTmpTargetsLiveExecution(t *testing.T) {
 	tempDir := t.TempDir()
 
@@ -275,7 +422,7 @@ func TestPruneTmpTargetsLiveExecution(t *testing.T) {
 	}
 	os.Stdout = w
 
-	reclaimed := PruneTmpTargets(targets, "Test Live Cleanup", "Prompt?", false, true, 40, "")
+	reclaimed, _ := PruneTmpTargets(targets, "Test Live Cleanup", "Prompt?", CleanupOptions{Yes: true, PathWidth: 40})
 
 	w.Close()
 	os.Stdout = oldStdout
