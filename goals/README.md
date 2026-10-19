@@ -28,10 +28,10 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 10
-- 🟡 **Ready to Execute (Pending)**: 2 (2 independent ⚡, 0 unblocked 🔗)
-- 🟢 **Implemented**: 8 (8 verified 📜, 0 unverified)
+- 🟡 **Ready to Execute (Pending)**: 1 (1 independent ⚡, 0 unblocked 🔗)
+- 🟢 **Implemented**: 9 (9 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 4 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 31/37 completed (83%)
+- 📋 **Execution Tasks Progress**: 34/37 completed (91%)
 
 ---
 
@@ -39,7 +39,6 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `🗺️ Roadmap` | `🚢 SHIP ⚡ Independent` | - | Expand Cache Nested Directory Mtime Propagation Tests — Add unit tests for ScanTmpDirectoriesIn verifying that recently modified nested ... | `/goal goals/cache-mtime-propagation-tests/goal.md` |
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `✨ Nice-to-Have` | `🚢 SHIP ⚡ Independent` | - | Expand Proc Stat Parsing and Malformed Input Tests — Add unit tests for ReadStartTicks and ReadProcessLastActive covering malformed p... | `/goal goals/proc-stat-edge-case-tests/goal.md` |
 
 ---
@@ -50,6 +49,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | :--- | :---: | :--- | :---: | :--- | :--- |
 | [`security-hardening-guards`](security-hardening-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `fc6640d` |
 | [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `d1d4336` |
+| [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `003aaa9` |
 | [`cleaner-interactive-tests`](cleaner-interactive-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `3162132` |
 | [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `3854d3b` |
 | [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `9e578a7` |

@@ -1,5 +1,12 @@
 # Goal: Expand Cache Nested Directory Mtime Propagation Tests
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_cache-mtime-propagation-tests_1792407014`
+
+
 ## Goal Description
 Add unit tests for ScanTmpDirectoriesIn verifying that recently modified nested files inside an older parent folder update the lastActive age, and test symlink exclusion in subdirectories in cache_test.go.
 
