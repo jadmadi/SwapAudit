@@ -1,0 +1,31 @@
+swapaudit is dual-licensed under the Waqf Digital Public License (WaqfDPL-Mulzim 1.0)
+and the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later).
+
+You may choose to use, modify, copy, and redistribute this software under the terms
+of either license:
+
+1. Waqf Digital Public License - Level 2: Binding Attribution (WaqfDPL-Mulzim 1.0)
+   -------------------------------------------------------------------------------
+   هذا العمل هو وَقْفٌ لله تعالى تحت شروط رُخصة وَقْف الرَّقْمِيَّة العامَّة - الإصدار الأول.
+   المستوى المُطَبَّق هو: وَقْفٌ مُلْزِمٌ بالإِسْنَادِ (WaqfDPL-Mulzim 1.0).
+
+   This project is dedicated as a perpetual digital endowment (Waqf) for the sake of Allah
+   to benefit developers, sysadmins, and communities worldwide. Under WaqfDPL-Mulzim 1.0:
+   - You may freely use, share, modify, and distribute this software for any purpose.
+   - Any derivative works must remain dedicated under WaqfDPL-Mulzim 1.0 (reciprocal copyleft).
+   - Clear attribution to the original author (Jad Madi) must be preserved.
+   - Full legal code is available in WaqfDPL-1.0.md and at:
+     https://github.com/WaqfTech/waqf-license-draft
+
+2. GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)
+   -------------------------------------------------------------------
+   swapaudit is free software: you can redistribute it and/or modify it under the terms
+   of the GNU Affero General Public License as published by the Free Software Foundation,
+   either version 3 of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+   without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+   See the GNU Affero General Public License for more details.
+
+   Full legal text is available in LICENSE-AGPL.txt and at:
+   https://www.gnu.org/licenses/agpl-3.0.html

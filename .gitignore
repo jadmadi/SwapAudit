@@ -1,0 +1,19 @@
+# Binaries
+swapaudit
+*.exe
+*.test
+*.prof
+
+# OS & Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Architecture / Test artifacts
+rm/
+scratch/
+dist/
+build/
