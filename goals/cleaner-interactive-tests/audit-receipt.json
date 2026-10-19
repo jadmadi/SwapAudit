@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "cleaner-interactive-tests",
+  "commit_sha": "3162132ccf129911b3e9ecd53b05244b775c57ca",
+  "spec_hash": "0fd12821efe5636a74de08150de2c74d35518f38930ce8aff58ff7a852e42b1d",
+  "sandbox_nonce": "619c98da17ff5e3c",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "5RNGYID43brMLDwJMwVjD59rU1sjpDGAuQOBq28icrk=",
+  "auditor_signature": "XJA8oL/Kvn+zy9nnYR3fKZNZxviqop6Cs1PBEP7kjJLGVkun5jO+oYeSjxyxycNg6K0Ljvmu2tP2UHFyuXz/Aw==",
+  "certified_at": "2026-10-19T10:48:25Z"
+}

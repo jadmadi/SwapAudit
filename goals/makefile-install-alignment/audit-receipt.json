@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "makefile-install-alignment",
+  "commit_sha": "9e578a72c64d494714f74b490baa1396d7c1b3ca",
+  "spec_hash": "14523d2088ee2a094156495a9cb86f5e308b24b88f28bd036571adc4a07474cf",
+  "sandbox_nonce": "aed5c3d28bb42e3c",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "RBaYvQ9kn6rrpXKM16a4JGnf6jvHs8B84+B07f4HPk4=",
+  "auditor_signature": "pB9gCxsTb3Ubh7UQPp21fTBsgNTC3HqgxPEdxoUKnRQUnziHMmc0cnOFBVYOA2zSrgRmKDN4aw7AuJ9UVe+2AA==",
+  "certified_at": "2026-10-19T09:40:28Z"
+}
