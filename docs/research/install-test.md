@@ -1,11 +1,37 @@
 # Install test
 
 Date: 2026-10-19
-Release: private `v0.1.0` in `jadmadi/SwapAudit`
+Release: public `v0.1.0` in `jadmadi/SwapAudit`
 
-## Private release smoke test
+## Public install test
 
-The published amd64 binary was run in two clean containers:
+The release is public. These checks ran without GitHub authentication:
+
+```text
+$ curl -fsSL .../swapaudit-linux-amd64 -o swapaudit-linux-amd64
+$ curl -fsSL .../checksums.txt -o checksums.txt
+$ sha256sum -c checksums.txt --ignore-missing
+swapaudit-linux-amd64: OK
+swapaudit-linux-arm64: OK
+swapaudit-linux-armv7: OK
+swapaudit-linux-riscv64: OK
+
+$ ./swapaudit-linux-amd64 --version
+swapaudit 0.1.0 (commit: faaa762, built: 2026-10-19T19:34:53Z)
+
+$ ./scripts/install-smoke.sh v0.1.0
+Install smoke passed for v0.1.0.
+
+$ go install github.com/jadmadi/swapaudit/cmd/swapaudit@v0.1.0
+swapaudit v0.1.0 (commit: release, built: unknown)
+
+$ ./swapaudit-old upgrade   # v0.0.1 build
+Upgrading swapaudit v0.0.1 -> v0.1.0...
+Checksum verified successfully.
+✔ Successfully upgraded swapaudit to v0.1.0
+```
+
+The published amd64 binary was also run in two clean containers:
 
 ```text
 Debian bookworm-slim:
@@ -28,21 +54,15 @@ The binary is static and runs on both glibc and musl environments.
 - Cosign keyless signature verified in the release workflow and by `scripts/verify-release.sh` with cosign v2.4.1.
 - Tamper test: appending one byte to `swapaudit-linux-amd64` makes `sha256sum -c` fail.
 
-## Public install test
+## Still outstanding
 
-**Not performed.** The repository is private, and public visibility, a public announcement, and public download measurement require maintainer approval.
-
-Blocked items:
-
-- Public unauthenticated download of the four assets.
-- Public `go install` and `swapaudit upgrade`.
-- Announcement in a community channel.
-- 14-day download/issue/reply measurement.
 - Five target-user interviews.
+- One public announcement (draft prepared; not posted).
+- Asset download counts at day 1, 7, and 14 (proxy metric).
+- A dated decision in `decision.md`.
 
 ## Next steps
 
-1. Maintainer decides whether the repository becomes public.
-2. If public, run `scripts/install-smoke.sh` from a clean environment and publish one appropriate announcement.
-3. Record asset download counts at day 1, 7, and 14 (proxy metric).
-4. Complete five interviews and write `decision.md`.
+1. Review and post the announcement using `docs/marketing/x-launch.md`.
+2. Record asset download counts at day 1, 7, and 14.
+3. Complete five interviews and write `decision.md`.

@@ -2,7 +2,7 @@
 
 **Linux swap, RAM, and tmpfs auditor with guarded cleanup.**
 
-> **Status: private v0.1.0.** The source builds and runs, and the first tagged release is published to this private repository. Public unauthenticated downloads, `go install`, and self-upgrade are pending the repository becoming public. Cleanup safety hardening is implemented; use `--dry-run` first and review each target. See [`docs/safety.md`](docs/safety.md), [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md), and [`goals/README.md`](goals/README.md).
+> **Status: public v0.1.0.** The first tagged release is public: four Linux assets, checksums, and cosign signatures. `go install` and `swapaudit upgrade` work without authentication. Cleanup safety hardening is implemented; use `--dry-run` first and review each target. See [`docs/safety.md`](docs/safety.md), [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md), and [`goals/README.md`](goals/README.md).
 
 ## The answer
 
@@ -60,7 +60,7 @@ SwapAudit. It reads `/proc`, ranks swap and `/tmp` occupants, classifies the saf
 
 | Tool | Per-process swap | `/tmp` aging | Agent-aware cleanup | Guarded process termination | Cost |
 | --- | :---: | :---: | :---: | :---: | --- |
-| **SwapAudit** | Yes | Yes (`/tmp`) | Partial — 4 runtimes | Yes — dry-run, start ticks, path/UID; process UID pending | Free, WaqfDPL/AGPL |
+| **SwapAudit** | Yes | Yes (`/tmp`) | Partial — 4 runtimes | Yes — dry-run, start ticks, process/file UID, path/symlink | Free, WaqfDPL/AGPL |
 | `ps_mem` | Yes (`--swap`) | No | No | No | Free, LGPL-2.1 |
 | `smem` | No — PSS/USS exclude swap | No | No | No | Free, GPLv2+ |
 | `systemd-tmpfiles` | No | Yes | No | OS policy | Bundled with systemd |
@@ -70,37 +70,51 @@ The wedge is not "another memory report." It is the combination of **swap attrib
 
 ## Quick start
 
-The repository is private. Authenticate with GitHub first.
+Install the release binary:
+
+```bash
+curl -fsSL https://github.com/jadmadi/SwapAudit/releases/download/v0.1.0/swapaudit-linux-amd64 \
+  -o ~/.local/bin/swapaudit
+chmod +x ~/.local/bin/swapaudit
+swapaudit --no-color
+```
+
+Or install with Go:
+
+```bash
+go install github.com/jadmadi/swapaudit/cmd/swapaudit@v0.1.0
+```
+
+Or build from source:
 
 ```bash
 git clone https://github.com/jadmadi/SwapAudit.git
 cd SwapAudit
 make build
-./swapaudit --no-color
-```
-
-Install to `~/.local/bin`:
-
-```bash
 make install
 ```
 
 Requirements: Linux with `/proc`; **Linux 3.14+ recommended** because the RAM-used calculation uses `MemAvailable`. The release build uses `CGO_ENABLED=0`.
 
-> **Release binaries:** v0.1.0 is published to this private repository. Use `gh release download` until the repository is public. `swapaudit upgrade` is implemented but uses unauthenticated GitHub URLs, so it cannot upgrade from a private repository. See [`docs/release.md`](docs/release.md).
-
 ## Verify a release
 
 ```bash
-gh release download v0.1.0 --repo jadmadi/SwapAudit \
-  --pattern 'swapaudit-linux-*' --pattern 'checksums.txt' \
-  --pattern 'checksums.txt.sig' --pattern 'checksums.txt.pem' --dir dist
-(cd dist && sha256sum -c checksums.txt --ignore-missing)
-./dist/swapaudit-linux-amd64 --version
 ./scripts/verify-release.sh v0.1.0
 ```
 
-`scripts/verify-release.sh` checks the four architecture asset names, checksums, the amd64 version string, and the cosign signature when cosign is installed. The release is signed with cosign keyless in GitHub Actions.
+The script checks the four architecture assets over the public internet, verifies `checksums.txt`, runs the amd64 binary, verifies the cosign signature when cosign is installed, and runs `go install @v0.1.0`.
+
+Manual checksum check:
+
+```bash
+mkdir -p dist
+curl -fsSL https://github.com/jadmadi/SwapAudit/releases/download/v0.1.0/checksums.txt -o dist/checksums.txt
+curl -fsSL https://github.com/jadmadi/SwapAudit/releases/download/v0.1.0/swapaudit-linux-amd64 -o dist/swapaudit-linux-amd64
+(cd dist && sha256sum -c checksums.txt --ignore-missing)
+./dist/swapaudit-linux-amd64 --version
+```
+
+The release is signed with cosign keyless in GitHub Actions.
 
 | Architecture | Release asset |
 | --- | --- |
@@ -260,9 +274,9 @@ flowchart TD
 
 ## Status and roadmap
 
-- **Stage:** private v0.1.0 release; public distribution pending.
-- **Ready now:** the three independent safety/trust goals (cleanup safety, update-check policy, security contacts).
-- **Blocked:** the v0.1.0 release depends on those three; demand validation depends on the release.
+- **Stage:** public v0.1.0 release.
+- **Completed:** cleanup safety, update-check privacy, security contacts, and the public release.
+- **In progress:** demand validation. The public install test is complete; five interviews and the 14-day download/issue measurement remain.
 - **Feature freeze:** no new scanners, agent runtimes, JSON, package managers, GUI, daemon, telemetry, or pricing work until [`public-install-demand-validation`](goals/public-install-demand-validation/goal.md) is certified.
 - **Goal index:** [`goals/README.md`](goals/README.md).
 

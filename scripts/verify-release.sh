@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify a published SwapAudit release: asset names, checksums, signature, binary.
+# Verify a published SwapAudit release over the public internet.
 # Usage: ./scripts/verify-release.sh [version]
 # Env: SWAPAUDIT_REPO (default: jadmadi/SwapAudit), SKIP_GO_INSTALL=1, SKIP_SIGNATURE=1
 
@@ -7,11 +7,13 @@ set -euo pipefail
 
 VERSION="${1:-v0.1.0}"
 REPO="${SWAPAUDIT_REPO:-jadmadi/SwapAudit}"
+BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+API="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
 TMP="$(mktemp -d)"
 trap 'rm -rf "${TMP}"' EXIT
 
-if ! command -v gh >/dev/null 2>&1; then
-    echo "gh is required" >&2
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required" >&2
     exit 2
 fi
 
@@ -22,23 +24,19 @@ EXPECTED=(
     swapaudit-linux-riscv64
 )
 
-ASSETS=$(gh release view "${VERSION}" --repo "${REPO}" --json assets --jq '.assets[].name' | sort)
+curl -fsSL "${API}" -o "${TMP}/release.json"
 for name in "${EXPECTED[@]}"; do
-    if ! grep -qx "${name}" <<<"${ASSETS}"; then
-        echo "FAIL: release is missing ${name}" >&2
-        echo "${ASSETS}" >&2
+    code=$(curl -sL -o /dev/null -w '%{http_code}' "${BASE}/${name}")
+    if [[ "${code}" != "200" ]]; then
+        echo "FAIL: ${name} returned HTTP ${code}" >&2
         exit 1
     fi
 done
-echo "PASS: four architecture assets present"
+echo "PASS: four architecture assets are publicly reachable"
 
-DOWNLOAD_PATTERNS=(
-    --pattern 'swapaudit-linux-*'
-    --pattern 'checksums.txt'
-    --pattern 'checksums.txt.sig'
-    --pattern 'checksums.txt.pem'
-)
-gh release download "${VERSION}" --repo "${REPO}" --dir "${TMP}" "${DOWNLOAD_PATTERNS[@]}"
+for name in "${EXPECTED[@]}" checksums.txt checksums.txt.sig checksums.txt.pem; do
+    curl -fsSL "${BASE}/${name}" -o "${TMP}/${name}"
+done
 
 (
     cd "${TMP}"
@@ -74,22 +72,16 @@ if [[ "${SKIP_SIGNATURE:-0}" != "1" ]]; then
 fi
 
 if [[ "${SKIP_GO_INSTALL:-0}" != "1" ]]; then
-    if command -v go >/dev/null 2>&1 && command -v gh >/dev/null 2>&1; then
-        export GH_TOKEN="${GH_TOKEN:-$(gh auth token)}"
-        export GOPRIVATE="github.com/jadmadi/*"
-        export GONOSUMDB="github.com/jadmadi/*"
-        export GOPROXY=direct
-        export GIT_CONFIG_COUNT=1
-        export GIT_CONFIG_KEY_0=credential.helper
-        export GIT_CONFIG_VALUE_0='!gh auth git-credential'
+    if command -v go >/dev/null 2>&1; then
         GOBIN="$(mktemp -d)"
         VERSION_PKG="github.com/jadmadi/swapaudit/internal/version"
-        go install -ldflags="-X ${VERSION_PKG}.Version=${VERSION} -X ${VERSION_PKG}.Commit=release -X ${VERSION_PKG}.Date=unknown" \
+        GOPROXY=https://proxy.golang.org go install \
+            -ldflags="-X ${VERSION_PKG}.Version=${VERSION} -X ${VERSION_PKG}.Commit=release -X ${VERSION_PKG}.Date=unknown" \
             "github.com/jadmadi/swapaudit/cmd/swapaudit@${VERSION}"
         "${GOBIN}/swapaudit" --version | grep -F "${VERSION_STRIPPED}"
         echo "PASS: go install @${VERSION}"
     else
-        echo "WARN: go or gh unavailable; skipped go install"
+        echo "WARN: go unavailable; skipped go install"
     fi
 fi
 

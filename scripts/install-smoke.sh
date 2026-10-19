@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Install and smoke-test the released amd64 binary.
+# Install and smoke-test the published amd64 release.
 # Usage: ./scripts/install-smoke.sh [version]
-# Env: SWAPAUDIT_BINARY=/path/to/binary to test a local build instead of downloading.
+# Env: SWAPAUDIT_BINARY=/path/to/binary to test a local build instead.
 
 set -euo pipefail
 
@@ -21,16 +21,13 @@ if [[ -n "${SWAPAUDIT_BINARY:-}" ]]; then
     chmod +x "${BIN}"
     echo "Using local binary: ${SWAPAUDIT_BINARY}"
 else
-    if ! command -v gh >/dev/null 2>&1; then
-        echo "gh is required to download a private release" >&2
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl is required" >&2
         exit 2
     fi
-    if ! gh auth status >/dev/null 2>&1; then
-        echo "gh is not authenticated; run 'gh auth login' or set SWAPAUDIT_BINARY" >&2
-        exit 2
-    fi
-    gh release download "${VERSION}" --repo "${REPO}" --dir "${TMP}" \
-        --pattern 'swapaudit-linux-amd64' --pattern 'checksums.txt'
+    BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+    curl -fsSL "${BASE}/swapaudit-linux-amd64" -o "${BIN}"
+    curl -fsSL "${BASE}/checksums.txt" -o "${TMP}/checksums.txt"
     chmod +x "${BIN}"
     (cd "${TMP}" && sha256sum -c checksums.txt --ignore-missing)
 fi

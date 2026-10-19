@@ -9,11 +9,12 @@ This is qualitative research plus a public install test. It is not a statistical
 ## Status
 
 - Protocol and interview script: ready.
+- Public install test: **complete** — public downloads, `go install`, live upgrade, and Debian/Alpine container smoke tests passed.
 - Five interviews: **not started** — requires five consenting target users.
-- Public install test: **blocked** — the repository is private; public visibility and a public announcement require maintainer approval.
-- 14-day download/issue measurement: **not started** — requires a public release and elapsed time.
+- Public announcement: **drafted, not posted** — see `docs/marketing/x-launch.md`.
+- 14-day download/issue measurement: **not started** — requires the announcement and elapsed time.
 
-The private v0.1.0 release was smoke-tested in Debian bookworm and Alpine 3.20; see [`install-test.md`](install-test.md).
+See [`install-test.md`](install-test.md) for the public install evidence.
 
 ## Target profile
 
@@ -69,4 +70,4 @@ These are proposed decision criteria, not measured market data.
 
 - Feature freeze: [`GOVERNANCE.md`](../../GOVERNANCE.md).
 - Goal: [`goals/public-install-demand-validation/goal.md`](../../goals/public-install-demand-validation/goal.md).
-- Business review: `docs/business-reviews/2026-10-19-swapaudit-full-review.md` (internal/private).
+- Business review: `docs/business-reviews/2026-10-19-swapaudit-full-review.md`.

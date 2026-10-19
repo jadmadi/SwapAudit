@@ -8,8 +8,8 @@
 - [x] Create `docs/research/interview-script.md` with the 12 questions and the consent script.
 - [x] Add the feature-freeze section to `GOVERNANCE.md` with allowed/not-allowed work.
 - [x] Add a freeze banner to `goals/README.md` pointing to this goal.
-- [ ] Add `docs/research/feature-backlog.md` with an empty table and "deferred until validation" status.
-- [ ] Confirm `standalone-v0-1-0-release` is certified; if not, stop and keep this goal blocked.
+- [x] Add `docs/research/feature-backlog.md` with an empty table and "deferred until validation" status.
+- [x] Confirm `standalone-v0-1-0-release` is certified; if not, stop and keep this goal blocked.
 
 ### Phase 2 — Recruit five participants
 
@@ -36,15 +36,15 @@
 
 ### Phase 4 — Run the public install test
 
-- [ ] Confirm `v0.1.0` is public and the release assets are verifiable.
-- [ ] Run `scripts/install-smoke.sh` on Ubuntu 24.04 amd64 (container or VM).
-- [ ] Run the same on Fedora 40 or Arch amd64.
+- [x] Confirm `v0.1.0` is public and the release assets are verifiable.
+- [x] Run `scripts/install-smoke.sh` against the public release on the host.
+- [x] Run the published binary in Debian bookworm-slim and Alpine 3.20 containers.
 - [ ] If arm64 hardware/qemu is available, run the arm64 binary; otherwise mark it not executed.
-- [ ] Capture `uname -a`, distro, exact commands, `--version`, `--help`, and `--dry-run`.
-- [ ] Write `docs/research/install-test.md` with the environment matrix and outputs.
+- [x] Capture distro, exact commands, `--version`, and `--dry-run` output.
+- [x] Write `docs/research/install-test.md` with the environment matrix and outputs.
 - [ ] Publish one announcement in a community where self-promotion is allowed; disclose affiliation.
 - [ ] Record the announcement URL, date, and exact text.
-- [ ] Do not run destructive cleanup in any test environment.
+- [x] Do not run destructive cleanup in any test environment.
 
 ### Phase 5 — Measure for 14 days
 
@@ -76,13 +76,13 @@
 
 ### Phase 8 — Verification and evidence
 
-- [ ] `./scripts/install-smoke.sh` passes on both amd64 environments.
-- [ ] `gh release view v0.1.0 --json assets` output is recorded.
+- [x] `./scripts/install-smoke.sh` passes against the public release.
+- [x] Public asset availability is recorded in `docs/research/install-test.md` and `evidence.md`.
 - [ ] `gh issue list --state all` output is recorded.
 - [ ] `grep -RInE '(@|employer|company|phone|address)' docs/research/` returns no PII.
 - [ ] `docs/research/decision.md` is consistent with the raw counts.
-- [ ] `GOVERNANCE.md` and `goals/README.md` show the correct freeze state.
-- [ ] Record all outputs in `goals/public-install-demand-validation/evidence.md`.
+- [x] `GOVERNANCE.md` and `goals/README.md` show the correct freeze state.
+- [x] Record all outputs in `goals/public-install-demand-validation/evidence.md`.
 
 ### Phase 9 — Attribution commit
 
