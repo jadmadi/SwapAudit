@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -106,7 +107,7 @@ func TestFetchLatestReleaseAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/test/repo/releases/latest" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"tag_name": "v0.2.0", "html_url": "https://github.com/test/repo/releases/tag/v0.2.0"}`))
+			_, _ = w.Write([]byte(`{"tag_name": "v0.2.0", "html_url": "https://github.com/test/repo/releases/tag/v0.2.0"}`))
 			return
 		}
 		http.NotFound(w, r)
@@ -148,7 +149,7 @@ func TestFetchChecksumAndComputeSHA256(t *testing.T) {
 	// Test checksum file parsing
 	checksumsContent := fmt.Sprintf("%s  dist/swapaudit-linux-amd64\nabc123def  dist/swapaudit-linux-arm64\n", expectedHex)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(checksumsContent))
+		_, _ = w.Write([]byte(checksumsContent))
 	}))
 	defer ts.Close()
 
@@ -239,8 +240,8 @@ func TestCheckDailyUpdateContextCancel(t *testing.T) {
 	cancel() // Cancel immediately
 
 	_, err := CheckDailyUpdateWithContext(ctx, "dev")
-	if err == nil {
-		// Either returned early because env or failed with context canceled
+	if err != nil && !errors.Is(err, context.Canceled) {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -294,7 +295,7 @@ func TestFetchChecksumMalformedLines(t *testing.T) {
 	}, "\n")
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(malformedContent))
+		_, _ = w.Write([]byte(malformedContent))
 	}))
 	defer ts.Close()
 
