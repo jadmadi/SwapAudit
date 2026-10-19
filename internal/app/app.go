@@ -3,6 +3,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -172,19 +173,41 @@ func Run(args []string) int {
 		return 0
 	}
 
-	var updateCh chan *updater.UpdateInfo
-	if !*noUpdateCheck {
-		updateCh = make(chan *updater.UpdateInfo, 1)
-		go func() {
-			info, _ := updater.CheckDailyUpdate(version.Version)
-			updateCh <- info
-		}()
+	var cachedNotice *updater.UpdateInfo
+	var updateCancel context.CancelFunc
+	var updateDone chan struct{}
+	var updateNotice *updater.UpdateInfo
+
+	if !*noUpdateCheck && os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") == "" && os.Getenv("CI") == "" {
+		if info := updater.GetCachedUpdate(version.Version); info != nil {
+			cachedNotice = info
+		} else {
+			state, err := updater.LoadState(updater.CacheFilePath())
+			checkDue := err != nil || state == nil || time.Since(state.LastChecked) >= updater.CheckInterval
+			if checkDue {
+				var ctx context.Context
+				ctx, updateCancel = context.WithTimeout(context.Background(), 2*time.Second)
+				defer updateCancel()
+				updateDone = make(chan struct{})
+				go func() {
+					defer close(updateDone)
+					info, _ := updater.CheckDailyUpdateWithContext(ctx, version.Version)
+					if info != nil {
+						updateNotice = info
+					}
+				}()
+			}
+		}
 	}
 
 	term.InitTerminal(*noColor, *ascii)
 
 	if *sortBy != "size" && *sortBy != "age" {
 		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size' or 'age')\n", *sortBy)
+		if updateCancel != nil {
+			updateCancel()
+			<-updateDone
+		}
 		return 2
 	}
 
@@ -218,13 +241,19 @@ func Run(args []string) int {
 		PrintQuickCommands()
 	}
 
-	if updateCh != nil {
+	if cachedNotice != nil {
+		term.PrintUpdateNotice(cachedNotice.Current, cachedNotice.Latest)
+	} else if updateDone != nil {
 		select {
-		case info := <-updateCh:
-			if info != nil {
-				term.PrintUpdateNotice(info.Current, info.Latest)
+		case <-updateDone:
+			if updateNotice != nil {
+				term.PrintUpdateNotice(updateNotice.Current, updateNotice.Latest)
 			}
 		case <-time.After(150 * time.Millisecond):
+			if updateCancel != nil {
+				updateCancel()
+			}
+			<-updateDone
 		}
 	}
 

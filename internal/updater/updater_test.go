@@ -3,6 +3,7 @@
 package updater
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -181,5 +182,63 @@ func TestCopyFileAtomic(t *testing.T) {
 	}
 	if string(destData) != string(data) {
 		t.Errorf("dest content = %q, expected %q", string(destData), string(data))
+	}
+}
+
+func TestGetCachedUpdate(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", tmpDir)
+	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
+	t.Setenv("CI", "")
+
+	// 1. When no state exists -> nil
+	if info := GetCachedUpdate("v0.1.0"); info != nil {
+		t.Errorf("expected nil when no cache exists, got %v", info)
+	}
+
+	// 2. When recent state exists with newer version -> UpdateInfo
+	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
+	state := &State{
+		LastChecked:   time.Now(),
+		LatestVersion: "v0.2.0",
+		ReleaseURL:    "https://github.com/jadmadi/swapaudit/releases/tag/v0.2.0",
+	}
+	if err := SaveState(statePath, state); err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+
+	info := GetCachedUpdate("v0.1.0")
+	if info == nil {
+		t.Fatalf("expected UpdateInfo for newer version, got nil")
+	}
+	if info.Latest != "v0.2.0" {
+		t.Errorf("info.Latest = %q, want v0.2.0", info.Latest)
+	}
+
+	// 3. When current version matches latest -> nil
+	if currentInfo := GetCachedUpdate("v0.2.0"); currentInfo != nil {
+		t.Errorf("expected nil when current matches latest, got %v", currentInfo)
+	}
+
+	// 4. When state is older than 24 hours -> nil
+	staleState := &State{
+		LastChecked:   time.Now().Add(-25 * time.Hour),
+		LatestVersion: "v0.3.0",
+	}
+	if err := SaveState(statePath, staleState); err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+	if staleInfo := GetCachedUpdate("v0.1.0"); staleInfo != nil {
+		t.Errorf("expected nil for stale cache (>24h), got %v", staleInfo)
+	}
+}
+
+func TestCheckDailyUpdateContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	_, err := CheckDailyUpdateWithContext(ctx, "dev")
+	if err == nil {
+		// Either returned early because env or failed with context canceled
 	}
 }

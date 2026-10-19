@@ -6,8 +6,12 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/jadmadi/swapaudit/internal/updater"
 )
 
 func TestRunVersion(t *testing.T) {
@@ -169,5 +173,45 @@ func TestRunNoUpdateCheck(t *testing.T) {
 
 	if code != 0 {
 		t.Errorf("Run(--no-update-check) exit code = %d, want 0", code)
+	}
+}
+
+func TestRunCachedUpdateNotice(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", tmpDir)
+	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
+	t.Setenv("CI", "")
+
+	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
+	state := &updater.State{
+		LastChecked:   time.Now(),
+		LatestVersion: "v99.0.0",
+		ReleaseURL:    "https://github.com/jadmadi/swapaudit/releases/tag/v99.0.0",
+	}
+	if err := updater.SaveState(statePath, state); err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--dry-run", "--limit", "1", "--no-color", "--ascii"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "A new release of swapaudit is available") {
+		t.Errorf("expected update notice for cached newer version, got: %q", output)
 	}
 }

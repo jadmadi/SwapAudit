@@ -5,6 +5,7 @@ package updater
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -204,14 +205,38 @@ func IsNewer(current, target string) bool {
 	return CompareVersions(current, target) < 0
 }
 
+// GetCachedUpdate reads local cache file synchronously. Returns UpdateInfo if an update is already known and fresh.
+func GetCachedUpdate(currentVersion string) *UpdateInfo {
+	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
+		return nil
+	}
+	path := CacheFilePath()
+	state, err := LoadState(path)
+	if err == nil && state != nil && time.Since(state.LastChecked) < CheckInterval {
+		if IsNewer(currentVersion, state.LatestVersion) {
+			return &UpdateInfo{
+				Current:    currentVersion,
+				Latest:     state.LatestVersion,
+				ReleaseURL: state.ReleaseURL,
+			}
+		}
+	}
+	return nil
+}
+
 // FetchLatestRelease queries GitHub for the latest tag of the specified repository.
 func FetchLatestRelease(repo string, client *http.Client) (string, string, error) {
+	return FetchLatestReleaseContext(context.Background(), repo, client)
+}
+
+// FetchLatestReleaseContext queries GitHub for the latest tag with context cancellation support.
+func FetchLatestReleaseContext(ctx context.Context, repo string, client *http.Client) (string, string, error) {
 	if client == nil {
 		client = &http.Client{Timeout: RequestTimeout}
 	}
 
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
-	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -240,7 +265,7 @@ func FetchLatestRelease(repo string, client *http.Client) (string, string, error
 		},
 	}
 	webURL := fmt.Sprintf("https://github.com/%s/releases/latest", repo)
-	webReq, err := http.NewRequest(http.MethodGet, webURL, nil)
+	webReq, err := http.NewRequestWithContext(ctx, http.MethodGet, webURL, nil)
 	if err != nil {
 		return "", "", err
 	}
@@ -268,6 +293,11 @@ func FetchLatestRelease(repo string, client *http.Client) (string, string, error
 // CheckDailyUpdate checks for an available release update at most once per 24 hours.
 // Returns update details if a newer version is available, or nil if current or checked recently.
 func CheckDailyUpdate(currentVersion string) (*UpdateInfo, error) {
+	return CheckDailyUpdateWithContext(context.Background(), currentVersion)
+}
+
+// CheckDailyUpdateWithContext checks for an available release update with context cancellation support.
+func CheckDailyUpdateWithContext(ctx context.Context, currentVersion string) (*UpdateInfo, error) {
 	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
 		return nil, nil
 	}
@@ -292,7 +322,7 @@ func CheckDailyUpdate(currentVersion string) (*UpdateInfo, error) {
 		repo = DefaultRepo
 	}
 
-	latest, releaseURL, fetchErr := FetchLatestRelease(repo, nil)
+	latest, releaseURL, fetchErr := FetchLatestReleaseContext(ctx, repo, nil)
 
 	// Save check timestamp even on failure to avoid repeating network requests today
 	newState := &State{
