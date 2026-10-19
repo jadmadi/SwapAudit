@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "ansi-truncate-rendering",
+  "commit_sha": "d1d43360993af5d9c1ea675339a394c02e465ad3",
+  "spec_hash": "692169b25e95474ad73d6bb73de0bb3b84bce4399c076ddd80dbeeb70e287df0",
+  "sandbox_nonce": "d62374b46ee7dda7",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "7sUIHc7yqrScufNyABm2eDC+soPSRNGNHxPir96UUdI=",
+  "auditor_signature": "1mi71T2KOUiJTrw9Z00X9LN++fYq+S+T+NVgd8nzxCITf5K7i2KLZc5r2j/lWKWNA0fjXaF1Y0yeZM1zjHvvAg==",
+  "certified_at": "2026-10-19T09:40:11Z"
+}
