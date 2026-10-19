@@ -291,6 +291,8 @@ func StrWidth(s string) int {
 }
 
 // Truncate truncates a string to fit within w visible cells, ending with an ellipsis.
+// If s contains ANSI escape sequences, Truncate preserves styling up to the truncation
+// point and appends a reset sequence to prevent color bleeding.
 func Truncate(s string, w int) string {
 	if StrWidth(s) <= w {
 		return s
@@ -308,9 +310,33 @@ func Truncate(s string, w int) string {
 		return ""
 	}
 	maxW := w - ellW
-	var result []rune
+	var b strings.Builder
 	curW := 0
-	for _, r := range s {
+	hasEsc := false
+	inEsc := false
+
+	for i := 0; i < len(s); {
+		if s[i] == 0x1b {
+			start := i
+			i++
+			inEsc = true
+			for i < len(s) && inEsc {
+				if (s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= 'a' && s[i] <= 'z') {
+					inEsc = false
+				}
+				i++
+			}
+			b.WriteString(s[start:i])
+			hasEsc = true
+			continue
+		}
+
+		r, size := utf8.DecodeRuneInString(s[i:])
+		i += size
+		if r == 0xFE0F {
+			b.WriteRune(r)
+			continue
+		}
 		rw := 1
 		if r >= 0x1F000 || (r >= 0x2600 && r <= 0x27BF && r != 0x2794) || (r >= 0x2B50 && r <= 0x2B55) {
 			rw = 2
@@ -318,10 +344,15 @@ func Truncate(s string, w int) string {
 		if curW+rw > maxW {
 			break
 		}
-		result = append(result, r)
+		b.WriteRune(r)
 		curW += rw
 	}
-	return string(result) + ell
+
+	b.WriteString(ell)
+	if hasEsc {
+		b.WriteString("\x1b[0m")
+	}
+	return b.String()
 }
 
 // FormatBytes formats a byte count into a human-readable string.

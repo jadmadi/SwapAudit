@@ -79,6 +79,9 @@ func TestTruncate(t *testing.T) {
 		{"chrome-devtools-mcp", 15, "chrome-devtool…"},
 		{"short", 1, "…"},
 		{"short", 0, ""},
+		{"\x1b[31mhello world\x1b[0m", 6, "\x1b[31mhello…\x1b[0m"},
+		{"\x1b[38;5;208morange text here\x1b[0m", 10, "\x1b[38;5;208morange te…\x1b[0m"},
+		{"\x1b[38;2;255;128;0mcustom color line\x1b[0m", 12, "\x1b[38;2;255;128;0mcustom colo…\x1b[0m"},
 	}
 
 	for _, tt := range tests {
@@ -89,6 +92,25 @@ func TestTruncate(t *testing.T) {
 		if w := StrWidth(got); w > tt.width {
 			t.Errorf("StrWidth(Truncate(%q, %d)) = %d, exceeds width %d", tt.input, tt.width, w, tt.width)
 		}
+	}
+}
+
+func TestTruncateANSI(t *testing.T) {
+	// Verify that truncated ANSI colored strings always terminate with reset
+	input := "\x1b[1;33mDormant Session (Active)\x1b[0m"
+	got := Truncate(input, 15)
+	if !strings.HasSuffix(got, "\x1b[0m") {
+		t.Errorf("Truncate(%q, 15) = %q, expected suffix \\x1b[0m", input, got)
+	}
+	if w := StrWidth(got); w > 15 {
+		t.Errorf("StrWidth(%q) = %d, exceeds limit 15", got, w)
+	}
+
+	// Verify plain text does not introduce unnecessary reset codes
+	plain := "plain text"
+	gotPlain := Truncate(plain, 5)
+	if strings.Contains(gotPlain, "\x1b") {
+		t.Errorf("Truncate(%q, 5) = %q, should not contain ANSI escape codes", plain, gotPlain)
 	}
 }
 
@@ -132,6 +154,7 @@ func TestRenderTableWidths(t *testing.T) {
 		{"▸ 47627", "chrome-devtools", "dormant-agents", "38.9 MB", "2d7h", "2d7h"},
 		{"  2699690", "chrome-devtools", "dormant-agents", "36.7 MB", "1d4h", "1d4h"},
 		{"  -", "bash (45 shells)", "active-apps", "296.8 MB", "2d7h", "2s"},
+		{"\x1b[33m▸ 999999999999999\x1b[0m", "\x1b[36mvery-long-target-name-that-definitely-exceeds-the-thirty-character-column-limit\x1b[0m", "dormant-agents", "10.0 MB", "1d", "1d"},
 	}
 
 	oldStdout := os.Stdout
