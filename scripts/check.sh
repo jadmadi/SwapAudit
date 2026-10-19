@@ -132,6 +132,28 @@ fi
 echo -e "   ${GREEN}✔ Claims sentry clean.${RESET}"
 
 # -----------------------------------------------------------------------------
+# 1c. Privacy Sentry: opt-in network policy
+# -----------------------------------------------------------------------------
+echo -e "\n${BOLD}1c. Running Privacy Sentry (opt-in network policy)...${RESET}"
+if [[ ! -f PRIVACY.md ]]; then
+    echo -e "   ${RED}✖ Error: PRIVACY.md is missing.${RESET}"
+    exit 1
+fi
+PRIVACY_HITS=$(grep -RInE 'SWAPAUDIT_NO_UPDATE_CHECK|--no-update-check|CheckDailyUpdate' \
+    --exclude-dir=.git --exclude-dir=goals --exclude-dir=business-reviews --exclude-dir=decisions \
+    --exclude='check.sh' --exclude='CHANGELOG.md' . 2>/dev/null || true)
+if [[ -n "${PRIVACY_HITS}" ]]; then
+    echo -e "   ${RED}✖ Error: removed update-check flag or API still referenced:${RESET}"
+    echo "${PRIVACY_HITS}" | sed 's/^/     /'
+    exit 1
+fi
+if ! grep -q -- '--check-updates' README.md; then
+    echo -e "   ${RED}✖ Error: README.md does not document --check-updates.${RESET}"
+    exit 1
+fi
+echo -e "   ${GREEN}✔ Privacy sentry clean.${RESET}"
+
+# -----------------------------------------------------------------------------
 # 2. Go Formatting (gofmt)
 # -----------------------------------------------------------------------------
 echo -e "\n${BOLD}2. Checking Go Formatting (gofmt)...${RESET}"

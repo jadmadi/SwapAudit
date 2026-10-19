@@ -28,7 +28,8 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 15
-- 🟡 **Ready to Execute (Pending)**: 2 (2 independent ⚡, 0 unblocked 🔗)
+- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
+- 🔵 **In Progress (Claimed)**: 1
 - ⛔ **Blocked on Prerequisites**: 2
 - 🟢 **Implemented**: 11 (10 verified 📜, 1 unverified)
 - 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
@@ -36,11 +37,18 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ---
 
+## 🔵 In Progress (Claimed Goals)
+
+| Goal Package | Tier | Mode | Agent | Status & Note | Started |
+| :--- | :---: | :---: | :--- | :--- | :--- |
+| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `🎯 Immediate` | `⚡ Indep` | `@commandcode` | Implementing opt-in update check, privacy contract, and removal of the 150ms background race | 0s ago |
+
+---
+
 ## 🟡 Ready to Execute (Pending Goals)
 
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#2)` | - | Make the Update Check Consent-Based and Truthful — Resolve the contradiction between `GOVERNANCE.md` ("does not phone home") and th... | `/goal goals/update-check-consent-disclosure/goal.md` |
 | [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#3)` | - | Consolidate Security, Support, and Vulnerability Reporting Contacts — Replace the inconsistent and partly unusable security/support surface with one c... | `/goal goals/security-contact-consolidation/goal.md` |
 | [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#4)` | Prereqs: update-check-consent-disclosure, security-contact-consolidation | Publish Standalone Repository and v0.1.0 Release with Four Assets — Turn the untracked local project into a public, installable, verifiable standalo... | `/goal goals/standalone-v0-1-0-release/goal.md` |
 | [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#5)` | Prereqs: standalone-v0-1-0-release | Validate Demand with Five User Interviews and a Public Install Test — Run the cheapest credible demand test before adding any feature: 1. **Five struc... | `/goal goals/public-install-demand-validation/goal.md` |

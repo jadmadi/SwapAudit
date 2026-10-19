@@ -22,10 +22,7 @@ import (
 
 const (
 	// DefaultRepo is the canonical GitHub repository for swapaudit.
-	DefaultRepo = "jadmadi/swapaudit"
-
-	// CheckInterval is the minimum interval between automated release checks.
-	CheckInterval = 24 * time.Hour
+	DefaultRepo = "jadmadi/SwapAudit"
 
 	// RequestTimeout is the maximum duration to wait for remote release checks.
 	RequestTimeout = 2 * time.Second
@@ -51,7 +48,12 @@ type UpdateInfo struct {
 	ReleaseURL string
 }
 
-var userHomeDir = os.UserHomeDir
+var (
+	userHomeDir    = os.UserHomeDir
+	executablePath = os.Executable
+	githubAPIBase  = "https://api.github.com"
+	githubWebBase  = "https://github.com"
+)
 
 // CacheFilePath returns the path to the persistent update check state file.
 func CacheFilePath() string {
@@ -213,25 +215,6 @@ func IsNewer(current, target string) bool {
 	return CompareVersions(current, target) < 0
 }
 
-// GetCachedUpdate reads local cache file synchronously. Returns UpdateInfo if an update is already known and fresh.
-func GetCachedUpdate(currentVersion string) *UpdateInfo {
-	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
-		return nil
-	}
-	path := CacheFilePath()
-	state, err := LoadState(path)
-	if err == nil && state != nil && time.Since(state.LastChecked) < CheckInterval {
-		if IsNewer(currentVersion, state.LatestVersion) {
-			return &UpdateInfo{
-				Current:    currentVersion,
-				Latest:     state.LatestVersion,
-				ReleaseURL: state.ReleaseURL,
-			}
-		}
-	}
-	return nil
-}
-
 // FetchLatestRelease queries GitHub for the latest tag of the specified repository.
 func FetchLatestRelease(repo string, client *http.Client) (string, string, error) {
 	return FetchLatestReleaseContext(context.Background(), repo, client)
@@ -243,7 +226,7 @@ func FetchLatestReleaseContext(ctx context.Context, repo string, client *http.Cl
 		client = &http.Client{Timeout: RequestTimeout}
 	}
 
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", repo)
+	apiURL := fmt.Sprintf("%s/repos/%s/releases/latest", githubAPIBase, repo)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return "", "", err
@@ -272,7 +255,7 @@ func FetchLatestReleaseContext(ctx context.Context, repo string, client *http.Cl
 			return http.ErrUseLastResponse
 		},
 	}
-	webURL := fmt.Sprintf("https://github.com/%s/releases/latest", repo)
+	webURL := fmt.Sprintf("%s/%s/releases/latest", githubWebBase, repo)
 	webReq, err := http.NewRequestWithContext(ctx, http.MethodGet, webURL, nil)
 	if err != nil {
 		return "", "", err
@@ -298,32 +281,13 @@ func FetchLatestReleaseContext(ctx context.Context, repo string, client *http.Cl
 	return "", "", fmt.Errorf("no release found for %s", repo)
 }
 
-// CheckDailyUpdate checks for an available release update at most once per 24 hours.
-// Returns update details if a newer version is available, or nil if current or checked recently.
-func CheckDailyUpdate(currentVersion string) (*UpdateInfo, error) {
-	return CheckDailyUpdateWithContext(context.Background(), currentVersion)
-}
-
-// CheckDailyUpdateWithContext checks for an available release update with context cancellation support.
-func CheckDailyUpdateWithContext(ctx context.Context, currentVersion string) (*UpdateInfo, error) {
-	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
-		return nil, nil
-	}
-
+// CheckForUpdate performs one release check with the provided context.
+// The caller decides whether to perform the request; this function does not
+// consult environment variables or apply a cadence.
+func CheckForUpdate(ctx context.Context, currentVersion string) (*UpdateInfo, error) {
 	path := CacheFilePath()
 	now := time.Now()
-
-	state, err := LoadState(path)
-	if err == nil && state != nil && now.Sub(state.LastChecked) < CheckInterval {
-		if IsNewer(currentVersion, state.LatestVersion) {
-			return &UpdateInfo{
-				Current:    currentVersion,
-				Latest:     state.LatestVersion,
-				ReleaseURL: state.ReleaseURL,
-			}, nil
-		}
-		return nil, nil
-	}
+	state, _ := LoadState(path)
 
 	repo := os.Getenv("SWAPAUDIT_REPO")
 	if repo == "" {
@@ -331,27 +295,21 @@ func CheckDailyUpdateWithContext(ctx context.Context, currentVersion string) (*U
 	}
 
 	latest, releaseURL, fetchErr := FetchLatestReleaseContext(ctx, repo, nil)
+	if fetchErr != nil {
+		if state != nil {
+			state.LastChecked = now
+			_ = SaveState(path, state)
+		} else {
+			_ = SaveState(path, &State{LastChecked: now})
+		}
+		return nil, fetchErr
+	}
 
-	// Save check timestamp even on failure to avoid repeating network requests today
-	newState := &State{
+	_ = SaveState(path, &State{
 		LastChecked:   now,
 		LatestVersion: latest,
 		ReleaseURL:    releaseURL,
-	}
-	if fetchErr == nil {
-		_ = SaveState(path, newState)
-	} else if state != nil {
-		// Retain previously known latest version on transient network error
-		newState.LatestVersion = state.LatestVersion
-		newState.ReleaseURL = state.ReleaseURL
-		_ = SaveState(path, newState)
-	} else {
-		_ = SaveState(path, newState)
-	}
-
-	if fetchErr != nil {
-		return nil, fetchErr
-	}
+	})
 
 	if IsNewer(currentVersion, latest) {
 		return &UpdateInfo{
@@ -376,7 +334,7 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 	latest, releaseURL, err := FetchLatestRelease(repo, client)
 	if err != nil {
 		fmt.Fprintf(errOut, "Error checking for updates: %v\n", err)
-		fmt.Fprintf(errOut, "You can visit the releases page directly: https://github.com/%s/releases\n", repo)
+		fmt.Fprintf(errOut, "You can visit the releases page directly: %s/%s/releases\n", githubWebBase, repo)
 		return 1
 	}
 
@@ -387,7 +345,7 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 
 	fmt.Fprintf(out, "Upgrading swapaudit %s -> %s...\n", currentVersion, latest)
 
-	selfPath, err := os.Executable()
+	selfPath, err := executablePath()
 	if err != nil {
 		fmt.Fprintf(errOut, "Error locating current executable: %v\n", err)
 		return 1
@@ -410,8 +368,8 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 		arch = "armv7"
 	}
 	assetName := fmt.Sprintf("swapaudit-linux-%s", arch)
-	assetURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repo, latest, assetName)
-	checksumURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/checksums.txt", repo, latest)
+	assetURL := fmt.Sprintf("%s/%s/releases/download/%s/%s", githubWebBase, repo, latest, assetName)
+	checksumURL := fmt.Sprintf("%s/%s/releases/download/%s/checksums.txt", githubWebBase, repo, latest)
 
 	fmt.Fprintf(out, "Downloading %s from %s...\n", assetName, assetURL)
 	tmpFile, err := os.CreateTemp(targetDir, ".swapaudit.tmp.*")

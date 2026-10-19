@@ -454,6 +454,7 @@ func PrintQuickCommands() {
 	cmd("--include-orphaned", "Include orphaned cleanup with --clean-all")
 	cmd("--all-users", "Allow signaling other users' processes")
 	cmd("--dry-run", "Preview cleanup actions without touching files or processes")
+	cmd("--check-updates", "Check for a newer release (one request)")
 	cmd("upgrade", "Upgrade swapaudit to the latest released version")
 	fmt.Println()
 }
@@ -478,7 +479,7 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --tmp-pattern <pattern>   Additional /tmp directory glob pattern (repeatable)")
 	fmt.Fprintln(w, "  --no-color                Disable ANSI color styling")
 	fmt.Fprintln(w, "  --ascii                   Use plain ASCII box borders instead of Unicode glyphs")
-	fmt.Fprintln(w, "  --no-update-check         Skip background 24-hour release check")
+	fmt.Fprintln(w, "  --check-updates           Check GitHub for a newer release (one request; see PRIVACY.md)")
 	fmt.Fprintln(w, "  -v, --version             Print version metadata and exit")
 	fmt.Fprintln(w, "  -h, --help                Show this help message and exit")
 	fmt.Fprintln(w)

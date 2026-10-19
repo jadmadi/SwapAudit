@@ -82,7 +82,7 @@ awk '{print $7}' /proc/<pid>/stat
 cat /proc/<pid>/cgroup
 # The cgroup should end in .service and tty_nr should be 0.
 # A dry-run orphan cleanup must not classify it as cleanable:
-./swapaudit --dry-run --clean-orphaned --no-update-check --no-color --ascii
+./swapaudit --dry-run --clean-orphaned --no-color --ascii
 systemctl --user stop swapaudit-safety-test.service
 systemctl --user reset-failed swapaudit-safety-test.service
 ```
@@ -91,8 +91,8 @@ For the other-UID path, use a disposable container:
 
 ```bash
 # As root in a container, with a process owned by UID 1000:
-./swapaudit --dry-run --clean-orphaned --no-update-check --no-color --ascii
+./swapaudit --dry-run --clean-orphaned --no-color --ascii
 # Expect uid-mismatch for the UID 1000 process.
-./swapaudit --dry-run --clean-orphaned --all-users --no-update-check --no-color --ascii
+./swapaudit --dry-run --clean-orphaned --all-users --no-color --ascii
 # Expect the --all-users warning and the target to be previewed, not signaled.
 ```
