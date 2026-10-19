@@ -48,11 +48,12 @@ echo "PASS: checksums verified"
 
 chmod +x "${TMP}/swapaudit-linux-amd64"
 VERSION_OUTPUT=$("${TMP}/swapaudit-linux-amd64" --version)
-if ! grep -Fq "${VERSION}" <<<"${VERSION_OUTPUT}"; then
-    echo "FAIL: version output does not contain ${VERSION}: ${VERSION_OUTPUT}" >&2
+VERSION_STRIPPED="${VERSION#v}"
+if ! grep -Fq "${VERSION}" <<<"${VERSION_OUTPUT}" && ! grep -Fq "${VERSION_STRIPPED}" <<<"${VERSION_OUTPUT}"; then
+    echo "FAIL: version output does not contain ${VERSION} or ${VERSION_STRIPPED}: ${VERSION_OUTPUT}" >&2
     exit 1
 fi
-echo "PASS: amd64 binary reports ${VERSION}"
+echo "PASS: amd64 binary reports ${VERSION_STRIPPED}"
 
 if [[ "${SKIP_SIGNATURE:-0}" != "1" ]]; then
     if [[ ! -f "${TMP}/checksums.txt.sig" || ! -f "${TMP}/checksums.txt.pem" ]]; then
@@ -82,8 +83,10 @@ if [[ "${SKIP_GO_INSTALL:-0}" != "1" ]]; then
         export GIT_CONFIG_KEY_0=credential.helper
         export GIT_CONFIG_VALUE_0='!gh auth git-credential'
         GOBIN="$(mktemp -d)"
-        go install "github.com/jadmadi/swapaudit/cmd/swapaudit@${VERSION}"
-        "${GOBIN}/swapaudit" --version | grep -F "${VERSION}"
+        VERSION_PKG="github.com/jadmadi/swapaudit/internal/version"
+        go install -ldflags="-X ${VERSION_PKG}.Version=${VERSION} -X ${VERSION_PKG}.Commit=release -X ${VERSION_PKG}.Date=unknown" \
+            "github.com/jadmadi/swapaudit/cmd/swapaudit@${VERSION}"
+        "${GOBIN}/swapaudit" --version | grep -F "${VERSION_STRIPPED}"
         echo "PASS: go install @${VERSION}"
     else
         echo "WARN: go or gh unavailable; skipped go install"
