@@ -260,7 +260,7 @@ func TestCacheFilePathUIDFallback(t *testing.T) {
 	}
 }
 
-func TestDownloadFileLimitReader(t *testing.T) {
+func TestDownloadFileOversizedLimit(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		chunk := make([]byte, 1024*1024) // 1MB chunk
@@ -279,5 +279,73 @@ func TestDownloadFileLimitReader(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "download size exceeded limit") {
 		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestFetchChecksumMalformedLines(t *testing.T) {
+	malformedContent := strings.Join([]string{
+		"",
+		"   ",
+		"single_field_without_filename",
+		"validhash  other-file",
+		"onlyoneword",
+		"targethash  swapaudit-linux-amd64",
+		"trailingline",
+	}, "\n")
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(malformedContent))
+	}))
+	defer ts.Close()
+
+	found := fetchChecksum(ts.Client(), ts.URL, "swapaudit-linux-amd64")
+	if found != "targethash" {
+		t.Errorf("fetchChecksum with malformed content = %q, want %q", found, "targethash")
+	}
+
+	notFound := fetchChecksum(ts.Client(), ts.URL, "nonexistent-asset")
+	if notFound != "" {
+		t.Errorf("fetchChecksum for non-existent asset = %q, want empty", notFound)
+	}
+
+	// Test non-200 response handling
+	tsErr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "not found", http.StatusNotFound)
+	}))
+	defer tsErr.Close()
+
+	errFound := fetchChecksum(tsErr.Client(), tsErr.URL, "swapaudit-linux-amd64")
+	if errFound != "" {
+		t.Errorf("fetchChecksum on 404 response = %q, want empty", errFound)
+	}
+}
+
+func TestDownloadFileHTTPStatusErrors(t *testing.T) {
+	tests := []struct {
+		status int
+	}{
+		{http.StatusNotFound},
+		{http.StatusInternalServerError},
+		{http.StatusForbidden},
+		{http.StatusBadGateway},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("HTTP_%d", tt.status), func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "error", tt.status)
+			}))
+			defer ts.Close()
+
+			dest := filepath.Join(t.TempDir(), "error_bin")
+			err := downloadFile(ts.Client(), ts.URL, dest)
+			if err == nil {
+				t.Fatalf("expected error for HTTP status %d, got nil", tt.status)
+			}
+			expectedCode := fmt.Sprintf("HTTP %d", tt.status)
+			if !strings.Contains(err.Error(), expectedCode) {
+				t.Errorf("expected error containing %q, got %q", expectedCode, err.Error())
+			}
+		})
 	}
 }
