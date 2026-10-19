@@ -7,12 +7,11 @@ on:
 
 permissions:
   contents: write
-  packages: write
   id-token: write
 
 jobs:
-  goreleaser:
-    name: Run GoReleaser
+  test:
+    name: Test before release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -26,8 +25,29 @@ jobs:
           go-version: '1.23'
           cache: true
 
-      - name: Install UPX
-        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+      - name: Run race tests
+        run: go test -race ./...
+
+  goreleaser:
+    name: Run GoReleaser
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -37,3 +57,42 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  verify:
+    name: Verify release assets
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Download assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --dir dist \
+            --pattern 'swapaudit-linux-*' --pattern 'checksums.txt' \
+            --pattern 'checksums.txt.sig' --pattern 'checksums.txt.pem'
+          ls -l dist
+
+      - name: Verify checksums and binary
+        run: |
+          cd dist
+          sha256sum -c checksums.txt --ignore-missing
+          ./swapaudit-linux-amd64 --version
+
+      - name: Verify signature
+        run: |
+          cd dist
+          cosign verify-blob \
+            --certificate checksums.txt.pem \
+            --signature checksums.txt.sig \
+            --certificate-identity-regexp "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/.*" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            checksums.txt

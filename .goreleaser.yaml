@@ -1,9 +1,5 @@
 version: 2
 
-before:
-  hooks:
-    - go mod tidy
-
 builds:
   - id: swapaudit
     main: ./cmd/swapaudit
@@ -21,37 +17,55 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/jadmadi/swapaudit/internal/version.Version={{.Version}}
-      - -X github.com/jadmadi/swapaudit/internal/version.Commit={{.ShortCommit}}
-      - -X github.com/jadmadi/swapaudit/internal/version.Date={{.Date}}
+      - -X github.com/jadmadi/swapaudit/internal/version.Version={{ .Version }}
+      - -X github.com/jadmadi/swapaudit/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/jadmadi/swapaudit/internal/version.Date={{ .CommitDate }}
     env:
       - CGO_ENABLED=0
 
-upx:
-  - enabled: true
-    compress: "best"
-    lzma: true
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-
 archives:
   - id: tarball
-    format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if eq .Arch "arm" }}v7{{ end }}'
     files:
       - LICENSE
       - LICENSE-AGPL.txt
       - WaqfDPL-1.0.md
       - README.md
+      - PRIVACY.md
+      - SECURITY.md
+      - SUPPORT.md
   - id: binary
-    format: binary
-    name_template: "swapaudit-{{ .Os }}-{{ .Arch }}"
+    formats:
+      - binary
+    name_template: 'swapaudit-{{ .Os }}-{{ .Arch }}{{ if eq .Arch "arm" }}v7{{ end }}'
 
 checksum:
   name_template: "checksums.txt"
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+
+release:
+  name_template: "SwapAudit {{ .Version }}"
+  draft: false
+  prerelease: false
+  make_latest: true
+  header: |
+    Linux binaries for SwapAudit, with SHA256 checksums and cosign keyless signatures.
+  footer: |
+    Release notes: https://github.com/jadmadi/SwapAudit/blob/main/docs/releases/v{{ .Version }}.md
+    Verify with: ./scripts/verify-release.sh v{{ .Version }}
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"

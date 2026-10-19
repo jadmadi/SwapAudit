@@ -322,6 +322,15 @@ func CheckForUpdate(ctx context.Context, currentVersion string) (*UpdateInfo, er
 	return nil, nil
 }
 
+// assetNameFor returns the release asset name for a Go architecture.
+// GoReleaser emits "arm" for GOARCH=arm; the release contract uses "armv7".
+func assetNameFor(goarch string) string {
+	if goarch == "arm" {
+		return "swapaudit-linux-armv7"
+	}
+	return fmt.Sprintf("swapaudit-linux-%s", goarch)
+}
+
 // Upgrade downloads the latest release binary and atomically replaces the running executable.
 func Upgrade(currentVersion string, out, errOut io.Writer) int {
 	repo := os.Getenv("SWAPAUDIT_REPO")
@@ -363,11 +372,7 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 		return 1
 	}
 
-	arch := runtime.GOARCH
-	if arch == "arm" {
-		arch = "armv7"
-	}
-	assetName := fmt.Sprintf("swapaudit-linux-%s", arch)
+	assetName := assetNameFor(runtime.GOARCH)
 	assetURL := fmt.Sprintf("%s/%s/releases/download/%s/%s", githubWebBase, repo, latest, assetName)
 	checksumURL := fmt.Sprintf("%s/%s/releases/download/%s/checksums.txt", githubWebBase, repo, latest)
 

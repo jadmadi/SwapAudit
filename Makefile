@@ -5,7 +5,7 @@ VERSION_PKG := github.com/jadmadi/swapaudit/internal/version
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
-DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+DATE ?= $(shell if [ -n "$${SOURCE_DATE_EPOCH:-}" ]; then date -u -d "@$${SOURCE_DATE_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ"; else date -u +"%Y-%m-%dT%H:%M:%SZ"; fi)
 
 LDFLAGS := -s -w \
 	-X $(VERSION_PKG).Version=$(VERSION) \

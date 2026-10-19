@@ -2,7 +2,7 @@
 
 **Linux swap, RAM, and tmpfs auditor with guarded cleanup.**
 
-> **Status: private, pre-v0.1.0.** The source builds and runs, but release binaries, `go install`, and self-upgrade are not published yet. Cleanup safety hardening is implemented; use `--dry-run` first and review each target. See [`docs/safety.md`](docs/safety.md) and [`goals/README.md`](goals/README.md).
+> **Status: private v0.1.0.** The source builds and runs, and the first tagged release is published to this private repository. Public unauthenticated downloads, `go install`, and self-upgrade are pending the repository becoming public. Cleanup safety hardening is implemented; use `--dry-run` first and review each target. See [`docs/safety.md`](docs/safety.md), [`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md), and [`goals/README.md`](goals/README.md).
 
 ## The answer
 
@@ -87,7 +87,20 @@ make install
 
 Requirements: Linux with `/proc`; **Linux 3.14+ recommended** because the RAM-used calculation uses `MemAvailable`. The release build uses `CGO_ENABLED=0`.
 
-> **Release binaries:** not published yet. The v0.1.0 release goal is [`goals/standalone-v0-1-0-release/goal.md`](goals/standalone-v0-1-0-release/goal.md). `swapaudit upgrade` is implemented but cannot work until a release exists.
+> **Release binaries:** v0.1.0 is published to this private repository. Use `gh release download` until the repository is public. `swapaudit upgrade` is implemented but uses unauthenticated GitHub URLs, so it cannot upgrade from a private repository. See [`docs/release.md`](docs/release.md).
+
+## Verify a release
+
+```bash
+gh release download v0.1.0 --repo jadmadi/SwapAudit \
+  --pattern 'swapaudit-linux-*' --pattern 'checksums.txt' \
+  --pattern 'checksums.txt.sig' --pattern 'checksums.txt.pem' --dir dist
+(cd dist && sha256sum -c checksums.txt --ignore-missing)
+./dist/swapaudit-linux-amd64 --version
+./scripts/verify-release.sh v0.1.0
+```
+
+`scripts/verify-release.sh` checks the four architecture asset names, checksums, the amd64 version string, and the cosign signature when cosign is installed. The release is signed with cosign keyless in GitHub Actions.
 
 ## First run
 
@@ -240,7 +253,7 @@ flowchart TD
 
 ## Status and roadmap
 
-- **Stage:** private, source-only, pre-v0.1.0.
+- **Stage:** private v0.1.0 release; public distribution pending.
 - **Ready now:** the three independent safety/trust goals (cleanup safety, update-check policy, security contacts).
 - **Blocked:** the v0.1.0 release depends on those three; demand validation depends on the release.
 - **Feature freeze:** no new scanners, agent runtimes, JSON, package managers, GUI, daemon, telemetry, or pricing work until [`public-install-demand-validation`](goals/public-install-demand-validation/goal.md) is certified.
