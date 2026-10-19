@@ -1,0 +1,342 @@
+#!/usr/bin/env bash
+#
+# scripts/build - Build script for swapaudit CLI
+#
+# Provides versatile build options across development, release, and compressed
+# modes with automatic version tag injection, atomic installation, PATH shadowing
+# detection, and cross-compilation support.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+PKG="github.com/jadmadi/swapaudit/cmd/swapaudit"
+VERSION_PKG="github.com/jadmadi/swapaudit/internal/version"
+
+# ANSI color codes for terminal output
+BOLD=$'\033[1m'
+RED=$'\033[31m'
+GREEN=$'\033[32m'
+YELLOW=$'\033[33m'
+CYAN=$'\033[36m'
+RESET=$'\033[0m'
+
+show_help() {
+    cat <<EOF
+${BOLD}swapaudit Build Script (${CYAN}build.sh${RESET}${BOLD})${RESET}
+
+${BOLD}USAGE:${RESET}
+    ./build.sh [MODE/OPTIONS] [TARGETS]
+    ${CYAN}(Running ./build.sh without arguments defaults to: --release --install)${RESET}
+
+${BOLD}BUILD MODES (Select one, defaults to --release):${RESET}
+  ${GREEN}--release${RESET}   ${BOLD}Production / Stripped Build (Default)${RESET}
+              Command: CGO_ENABLED=0 go build -ldflags="-s -w -X ..." -trimpath
+              Features: Fully static CGO-free binary, stripped symbols,
+                        reproducible path trimming.
+
+  ${CYAN}--upx${RESET}       ${BOLD}Compressed Build using UPX${RESET}
+              Command: Builds with --release flags, then compresses using upx --best --lzma.
+
+  ${YELLOW}--dev${RESET}       ${BOLD}Development / Debug Build${RESET}
+              Command: go build -ldflags="-X ..."
+              Features: Fast compilation, retains DWARF debug symbols for dlv/gdb.
+
+${BOLD}OPTIONS & TARGETS:${RESET}
+  ${BOLD}-o, --output <path>${RESET}   Specify output binary filepath (default: ./swapaudit)
+  ${BOLD}--target <os/arch>${RESET}    Cross-compile for target (e.g., linux/arm64, linux/riscv64)
+  ${BOLD}--all${RESET}                 Cross-compile for Linux architectures (amd64, arm64, arm, riscv64)
+  ${BOLD}--check${RESET}               Run test suite and lint preflight verification before building
+  ${BOLD}--install[=<dir>]${RESET}     Copy the built binary into a PATH bin dir (default: ~/.local/bin)
+  ${BOLD}--no-install${RESET}          Disable automatic installation
+  ${BOLD}--no-upx${RESET}              Disable UPX compression (alias for --release)
+  ${BOLD}-h, --help${RESET}            Display this help and exit
+
+${BOLD}EXAMPLES:${RESET}
+    ./build.sh                                # Build release and install to ~/.local/bin (default)
+    ./build.sh --no-install                   # Build locally to ./swapaudit without installing
+    ./build.sh --dev --no-install             # Build debug binary without installing
+    ./build.sh --upx                          # Build stripped binary with UPX compression
+    ./build.sh --all                          # Cross-compile for all Linux architectures into dist/
+EOF
+}
+
+MODE="release"
+OUTPUT=""
+TARGET_OS_ARCH=""
+BUILD_ALL=false
+CHECK=false
+INSTALL=true
+INSTALL_EXPLICIT=false
+
+if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    INSTALL_DIR="/usr/local/bin"
+else
+    INSTALL_DIR="${HOME}/.local/bin"
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --release|--no-upx)
+            MODE="release"
+            shift
+            ;;
+        --dev)
+            MODE="dev"
+            shift
+            ;;
+        --upx)
+            MODE="upx"
+            shift
+            ;;
+        --check)
+            CHECK=true
+            shift
+            ;;
+        -o|--output)
+            OUTPUT="$2"
+            shift 2
+            ;;
+        --target)
+            TARGET_OS_ARCH="$2"
+            shift 2
+            ;;
+        --all)
+            BUILD_ALL=true
+            shift
+            ;;
+        --install=*)
+            INSTALL_DIR="${1#*=}"
+            INSTALL=true
+            INSTALL_EXPLICIT=true
+            shift
+            ;;
+        --install)
+            INSTALL=true
+            INSTALL_EXPLICIT=true
+            shift
+            ;;
+        --no-install)
+            INSTALL=false
+            shift
+            ;;
+        -h|--help|help)
+            show_help
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Error: Unknown argument '$1'${RESET}" >&2
+            echo "Run './build.sh --help' for usage information." >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ "$INSTALL_EXPLICIT" == true && ( "$BUILD_ALL" == true || -n "$TARGET_OS_ARCH" ) ]]; then
+    echo -e "${RED}Error: --install is supported only for native builds.${RESET}" >&2
+    exit 1
+fi
+
+EXACT_TAG=$(git describe --tags --exact-match HEAD 2>/dev/null || true)
+if [[ -n "${SWAPAUDIT_BUILD_VERSION:-}" ]]; then
+    VERSION="${SWAPAUDIT_BUILD_VERSION}"
+elif [[ "$EXACT_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+    VERSION="${EXACT_TAG}"
+else
+    VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo "dev")"
+fi
+
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "none")"
+DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+LDFLAGS="-X ${VERSION_PKG}.Version=${VERSION} \
+-X ${VERSION_PKG}.Commit=${COMMIT} \
+-X ${VERSION_PKG}.Date=${DATE}"
+
+if [[ "$MODE" == "release" || "$MODE" == "upx" ]]; then
+    LDFLAGS="-s -w ${LDFLAGS}"
+fi
+
+if [[ "$CHECK" == true ]]; then
+    echo -e "${BOLD}Running quality preflight checks (lint & test)...${RESET}"
+    ./scripts/lint
+    ./scripts/test
+    echo -e "${GREEN}✔ Quality preflight passed.${RESET}\n"
+fi
+
+build_single() {
+    local target_goos="${1:-linux}"
+    local target_goarch="${2:-$(go env GOARCH)}"
+    local out_path="${3:-}"
+
+    if [[ -z "$out_path" ]]; then
+        out_path="${REPO_ROOT}/swapaudit"
+    fi
+
+    mkdir -p "$(dirname "$out_path")"
+
+    echo -e "${BOLD}Building swapaudit (${CYAN}${MODE}${RESET}${BOLD} mode) for ${YELLOW}${target_goos}/${target_goarch}${RESET}${BOLD}...${RESET}"
+
+    local go_flags=()
+    local env_vars=("GOOS=${target_goos}" "GOARCH=${target_goarch}")
+
+    case "$MODE" in
+        release|upx)
+            env_vars+=("CGO_ENABLED=0")
+            go_flags+=("-trimpath" "-ldflags=${LDFLAGS}")
+            ;;
+        dev)
+            go_flags+=("-ldflags=${LDFLAGS}")
+            ;;
+    esac
+
+    env "${env_vars[@]}" go build "${go_flags[@]}" -o "$out_path" "${PKG}"
+    chmod +x "$out_path"
+
+    local raw_size
+    raw_size=$(du -sh "$out_path" | cut -f1)
+
+    if [[ "$MODE" == "upx" ]]; then
+        if command -v upx >/dev/null 2>&1; then
+            echo -e "Compressing ${CYAN}${out_path}${RESET} with UPX (--best --lzma)..."
+            if upx --best --lzma "$out_path" >/dev/null 2>&1; then
+                local upx_size
+                upx_size=$(du -sh "$out_path" | cut -f1)
+                echo -e "  Compressed from ${raw_size} to ${upx_size}"
+            else
+                echo -e "${YELLOW}Notice: UPX compression skipped or unsupported on this target.${RESET}"
+            fi
+        else
+            echo -e "${YELLOW}Notice: 'upx' command not found, skipping compression.${RESET}"
+        fi
+    fi
+
+    # Post-build self-verification test (native linux executable only)
+    local host_goos host_goarch
+    host_goos="$(go env GOOS)"
+    host_goarch="$(go env GOARCH)"
+    if [[ "$target_goos" == "$host_goos" && "$target_goarch" == "$host_goarch" && -x "$out_path" ]]; then
+        local reported
+        reported="$("$out_path" --version 2>/dev/null || true)"
+        if [[ -n "$reported" ]]; then
+            echo -e "${GREEN}✔ Self-verification check passed:${RESET} ${reported}"
+        fi
+    fi
+
+    local final_size
+    final_size=$(du -sh "$out_path" | cut -f1)
+    echo -e "${GREEN}✔ Built successfully:${RESET} ${BOLD}${out_path}${RESET} (${CYAN}${final_size}${RESET})"
+}
+
+if [[ "$BUILD_ALL" == true ]]; then
+    mkdir -p "${REPO_ROOT}/dist"
+    targets=("amd64" "arm64" "arm" "riscv64")
+    for arch in "${targets[@]}"; do
+        out_file="${REPO_ROOT}/dist/swapaudit-linux-${arch}"
+        build_single "linux" "$arch" "$out_file"
+    done
+    cat <<EOF > "${REPO_ROOT}/dist/version.json"
+{
+  "version": "${VERSION}",
+  "commit": "${COMMIT}",
+  "built_at": "${DATE}",
+  "platforms": [
+    "linux-amd64",
+    "linux-arm64",
+    "linux-arm",
+    "linux-riscv64"
+  ]
+}
+EOF
+    (
+        cd "${REPO_ROOT}/dist"
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum swapaudit-* version.json > checksums.txt
+        else
+            shasum -a 256 swapaudit-* version.json > checksums.txt
+        fi
+    )
+    echo -e "\n${GREEN}${BOLD}✔ All target builds completed inside dist/ directory.${RESET}"
+elif [[ -n "$TARGET_OS_ARCH" ]]; then
+    IFS='/' read -r goos goarch <<< "$TARGET_OS_ARCH"
+    build_single "$goos" "$goarch" "${OUTPUT:-}"
+else
+    NATIVE_OUT="${OUTPUT:-${REPO_ROOT}/swapaudit}"
+    build_single "linux" "$(go env GOARCH)" "${NATIVE_OUT}"
+
+    # Install the native binary into a PATH bin dir
+    if [[ "$INSTALL" == true ]]; then
+        if ! mkdir -p "$INSTALL_DIR" 2>/dev/null || [[ ! -w "$INSTALL_DIR" ]]; then
+            if [[ "$INSTALL_EXPLICIT" == true ]]; then
+                echo -e "${RED}Error: Cannot write to requested install directory ${INSTALL_DIR}.${RESET}" >&2
+                exit 1
+            fi
+            echo -e "${YELLOW}Warning: Cannot write to install directory ${INSTALL_DIR}. Skipping install.${RESET}" >&2
+        else
+            target="${INSTALL_DIR}/swapaudit"
+            if ! tmp_target="$(mktemp "${INSTALL_DIR}/.swapaudit.tmp.XXXXXX" 2>/dev/null)"; then
+                echo -e "${RED}Error: Failed to create secure temporary file in ${INSTALL_DIR}.${RESET}" >&2
+                exit 1
+            fi
+            if ! cp "${NATIVE_OUT}" "${tmp_target}" || ! chmod 755 "${tmp_target}" || ! mv -f "${tmp_target}" "${target}"; then
+                rm -f "${tmp_target}"
+                if [[ "$INSTALL_EXPLICIT" == true ]]; then
+                    echo -e "${RED}Error: Atomic install failed for requested destination ${target}.${RESET}" >&2
+                    exit 1
+                fi
+                echo -e "${YELLOW}Warning: Could not install to ${target}; built binary remains at ${NATIVE_OUT}.${RESET}" >&2
+            else
+                echo -e "${GREEN}✔ Installed:${RESET} ${BOLD}${target}${RESET}"
+
+                # Optional dev synchronization if SWAPAUDIT_DEV_SYNC_PATH or local active go directory is configured
+                ACTIVE_GO_BIN="${SWAPAUDIT_DEV_SYNC_PATH:-${HOME}/scripts/active/go}"
+                if [[ -d "$ACTIVE_GO_BIN" && -w "$ACTIVE_GO_BIN" && "$ACTIVE_GO_BIN" != "$INSTALL_DIR" ]]; then
+                    active_target="${ACTIVE_GO_BIN}/swapaudit"
+                    if active_tmp="$(mktemp "${ACTIVE_GO_BIN}/.swapaudit.tmp.XXXXXX" 2>/dev/null)"; then
+                        if cp "${NATIVE_OUT}" "${active_tmp}" && chmod 755 "${active_tmp}" && mv -f "${active_tmp}" "${active_target}"; then
+                            echo -e "${GREEN}✔ Synchronized active go bin:${RESET} ${BOLD}${active_target}${RESET}"
+                        fi
+                        rm -f "${active_tmp}" 2>/dev/null || true
+                    fi
+                fi
+
+                # Hardened Path Linking: link into GOPATH/bin if distinct, writable, and present
+                gopath_bin="$(go env GOPATH 2>/dev/null || true)"
+                if [[ -n "$gopath_bin" && -d "$gopath_bin/bin" && "$gopath_bin/bin" != "$INSTALL_DIR" && "$gopath_bin/bin" != "${ACTIVE_GO_BIN:-}" ]]; then
+                    if [[ -w "$gopath_bin/bin" ]]; then
+                        ln -sf "$target" "$gopath_bin/bin/swapaudit" 2>/dev/null || true
+                        echo -e "${GREEN}✔ Linked to GOPATH/bin:${RESET} ${BOLD}${gopath_bin}/bin/swapaudit${RESET}"
+                    fi
+                fi
+
+                # Subshell PATH Sentry: Warn if INSTALL_DIR is not present in $PATH
+                case ":$PATH:" in
+                    *":$INSTALL_DIR:"*)
+                        ;;
+                    *)
+                        echo -e "\n${YELLOW}⚠ PATH Sentry Notice:${RESET} ${BOLD}${INSTALL_DIR}${RESET} is not in current \$PATH."
+                        echo -e "  To execute 'swapaudit' directly without full path, add to your shell profile:"
+                        echo -e "    ${CYAN}export PATH=\"${INSTALL_DIR}:\$PATH\"${RESET}\n"
+                        ;;
+                esac
+
+                # PATH Shadowing Detection: Check if a different swapaudit binary is found earlier in $PATH
+                RESOLVED="$(command -v swapaudit 2>/dev/null || true)"
+                if [[ -n "$RESOLVED" ]]; then
+                    RESOLVED_REAL="$(readlink -f "$RESOLVED" 2>/dev/null || true)"
+                    TARGET_REAL="$(readlink -f "$target" 2>/dev/null || true)"
+                    if [[ -n "$RESOLVED_REAL" && "$RESOLVED_REAL" != "$TARGET_REAL" ]]; then
+                        ACTIVE_REAL="$(readlink -f "${ACTIVE_GO_BIN:-}/swapaudit" 2>/dev/null || true)"
+                        if [[ -n "$ACTIVE_REAL" && "$RESOLVED_REAL" == "$ACTIVE_REAL" ]]; then
+                            echo -e "${CYAN}ℹ Active path resolution:${RESET} '${RESOLVED}' is active in current shell environment."
+                        else
+                            echo -e "${YELLOW}⚠ PATH Shadowing Notice:${RESET} '${RESOLVED}' on PATH shadows newly installed '${target}'."
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+fi

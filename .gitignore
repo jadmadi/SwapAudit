@@ -1,8 +1,10 @@
 # Binaries
-swapaudit
+/swapaudit
 *.exe
 *.test
 *.prof
+coverage.*
+coverage.html
 
 # OS & Editor
 .DS_Store
@@ -17,3 +19,9 @@ rm/
 scratch/
 dist/
 build/
+
+# Ephemeral goal claim locks (managed by sila)
+goals/*/claim.json
+
+# Local Sila state
+.sila/

@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "update-check-lifecycle",
+  "commit_sha": "602fa2f57a75f47311499cd7a498f9532641ab33",
+  "spec_hash": "93653145f7902c7bfd55c9cbfa6501c697ad285ec33672b3801e1f6b979f9c14",
+  "sandbox_nonce": "e3a39b5dfda8d22d",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "R9WMURMbCyzfEFoBFgM+bp1/CmH7oCCLCzcsSkTGu3Y=",
+  "auditor_signature": "Lusd+uxmZj+2mNNUR2+VEODmIfKKbaL+k145PnIA1+SS5zDubQoUNVR43OfG1QuETSwW6phw7/uqaMLEzuSxBQ==",
+  "certified_at": "2026-10-19T09:39:57Z"
+}
