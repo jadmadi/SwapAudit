@@ -71,7 +71,25 @@ func PruneTmpTargets(targets []model.SwapItem, groupTitle, prompt string, dryRun
 		if cleanPath == "" || cleanPath == "." || cleanPath == "/" || cleanPath == "/tmp" || cleanPath == "/var/tmp" || !filepath.IsAbs(cleanPath) {
 			continue
 		}
+		tmpBase := filepath.Clean(os.TempDir())
+		if !strings.HasPrefix(cleanPath, "/tmp/") && !strings.HasPrefix(cleanPath, "/var/tmp/") && !strings.HasPrefix(cleanPath, tmpBase+"/") {
+			continue
+		}
 		if !dryRun {
+			fi, err := os.Lstat(cleanPath)
+			if err != nil {
+				continue
+			}
+			if fi.Mode()&os.ModeSymlink != 0 {
+				fmt.Printf("  %s%s Skipped %s: target is a symlink\n", prefix, term.Yellow(term.GlyphWarn()), cleanPath)
+				continue
+			}
+			if stat_t, ok := fi.Sys().(*syscall.Stat_t); ok {
+				if stat_t.Uid != uint32(os.Getuid()) {
+					fmt.Printf("  %s%s Skipped %s: not owned by current user\n", prefix, term.Yellow(term.GlyphWarn()), cleanPath)
+					continue
+				}
+			}
 			if err := os.RemoveAll(cleanPath); err != nil {
 				fmt.Printf("  %s%s failed to prune %s: %v\n", prefix, term.Red(term.GlyphCross()), cleanPath, err)
 				continue
@@ -127,6 +145,9 @@ func KillProcessTargets(targets []model.SwapItem, groupTitle, prompt string, dry
 
 	var reclaimed int64
 	for _, p := range targets {
+		if p.PID <= 1 || p.PID == os.Getpid() {
+			continue
+		}
 		if !dryRun {
 			currTicks := proc.ReadStartTicks(p.PID)
 			if currTicks == 0 {

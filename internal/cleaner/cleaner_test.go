@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -52,16 +53,54 @@ func TestPruneTmpTargetsDryRun(t *testing.T) {
 }
 
 func TestPruneTmpTargetsUnsafeGuards(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a real file outside tmp
+	outsideFile := filepath.Join(t.TempDir(), "outside-run")
+	_ = os.WriteFile(outsideFile, []byte("data"), 0o644)
+
+	// Create a symlink inside tmpDir pointing to outside
+	symlinkPath := filepath.Join(tmpDir, "symlink-run")
+	if err := os.Symlink(outsideFile, symlinkPath); err != nil {
+		t.Fatalf("Symlink creation failed: %v", err)
+	}
+
 	targets := []model.SwapItem{
 		{Path: "", SizeBytes: 100},
 		{Path: "/", SizeBytes: 100},
 		{Path: "/tmp", SizeBytes: 100},
 		{Path: "/var/tmp", SizeBytes: 100},
+		{Path: "/etc/passwd", SizeBytes: 100},
+		{Path: "/home/user/project", SizeBytes: 100},
+		{Path: "/var/log/syslog", SizeBytes: 100},
 		{Path: "relative/path", SizeBytes: 100},
+		{Path: symlinkPath, SizeBytes: 100},
 	}
 	reclaimed := PruneTmpTargets(targets, "Unsafe Targets", "Prompt?", false, true, 40, "")
 	if reclaimed != 0 {
 		t.Errorf("PruneTmpTargets() reclaimed unsafe targets = %d, want 0", reclaimed)
+	}
+
+	// Verify the outside target file and symlink were preserved
+	if _, err := os.Lstat(symlinkPath); err != nil {
+		t.Errorf("Symlink path should have been skipped and preserved: %v", err)
+	}
+	if _, err := os.Stat(outsideFile); err != nil {
+		t.Errorf("Outside file should never be touched: %v", err)
+	}
+}
+
+func TestKillProcessTargetsUnsafeGuards(t *testing.T) {
+	targets := []model.SwapItem{
+		{PID: 0, Name: "process-group-zero", SwapBytes: 1024 * 1024},
+		{PID: 1, Name: "systemd-init", SwapBytes: 1024 * 1024},
+		{PID: -1, Name: "broadcast-pid", SwapBytes: 1024 * 1024},
+		{PID: os.Getpid(), Name: "swapaudit-self", SwapBytes: 1024 * 1024},
+	}
+
+	reclaimed := KillProcessTargets(targets, "Unsafe PIDs", "Prompt?", false, true, 40, "")
+	if reclaimed != 0 {
+		t.Errorf("KillProcessTargets() reclaimed unsafe PIDs = %d, want 0", reclaimed)
 	}
 }
 
