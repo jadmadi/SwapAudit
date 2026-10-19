@@ -230,7 +230,6 @@ flowchart TD
 - **Blocked:** the v0.1.0 release depends on those three; demand validation depends on the release.
 - **Feature freeze:** no new scanners, agent runtimes, JSON, package managers, GUI, daemon, telemetry, or pricing work until [`public-install-demand-validation`](goals/public-install-demand-validation/goal.md) is certified.
 - **Goal index:** [`goals/README.md`](goals/README.md).
-- **Business review:** [`docs/business-reviews/2026-10-19-swapaudit-full-review.md`](docs/business-reviews/2026-10-19-swapaudit-full-review.md).
 
 ## Development
 
