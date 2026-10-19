@@ -87,3 +87,56 @@ func TestKillProcessTargetsDryRun(t *testing.T) {
 		t.Errorf("KillProcessTargets() output missing process name: %s", output)
 	}
 }
+
+func TestExecuteCleanupDryRun(t *testing.T) {
+	items := []model.SwapItem{
+		{
+			Category:  model.CatUntouchedCache,
+			Cleanable: true,
+			Path:      "/tmp/fake-cache",
+			SizeBytes: 10 * 1024 * 1024,
+		},
+		{
+			Category:  model.CatAbandonedRun,
+			Cleanable: true,
+			Path:      "/tmp/fake-run",
+			SizeBytes: 5 * 1024 * 1024,
+		},
+		{
+			Category:   model.CatAbandonedAgent,
+			Cleanable:  true,
+			PID:        88888,
+			Name:       "dead-parent-agent",
+			SwapBytes:  25 * 1024 * 1024,
+			StartTicks: 999,
+		},
+		{
+			Category:   model.CatDormantAgent,
+			Cleanable:  true,
+			PID:        88889,
+			Name:       "dormant-agent",
+			SwapBytes:  15 * 1024 * 1024,
+			StartTicks: 1000,
+		},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	ExecuteCleanup(items, true, true, true, true, true, true)
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if !strings.Contains(output, "Would reclaim 15.0 MB tmp, 40.0 MB swap") {
+		t.Errorf("ExecuteCleanup output missing expected reclaim summary: %s", output)
+	}
+}

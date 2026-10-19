@@ -163,3 +163,101 @@ func TestRenderTableWidths(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderMeterBar(t *testing.T) {
+	SetColorEnabled(false)
+	SetAsciiMode(true)
+	defer func() {
+		SetColorEnabled(true)
+		SetAsciiMode(false)
+	}()
+
+	b0 := RenderMeterBar(0.0, 10)
+	if b0 != "[..........]" {
+		t.Errorf("RenderMeterBar(0) = %q, want [..........]", b0)
+	}
+
+	b50 := RenderMeterBar(50.0, 10)
+	if b50 != "[#####.....]" {
+		t.Errorf("RenderMeterBar(50) = %q, want [#####.....]", b50)
+	}
+
+	b100 := RenderMeterBar(100.0, 10)
+	if b100 != "[##########]" {
+		t.Errorf("RenderMeterBar(100) = %q, want [##########]", b100)
+	}
+
+	share := RenderShareMiniBar(25.5, 10)
+	if !strings.Contains(share, "25.5%") {
+		t.Errorf("RenderShareMiniBar = %q, missing 25.5%%", share)
+	}
+}
+
+func TestColorsAndGlyphs(t *testing.T) {
+	SetColorEnabled(true)
+	if !strings.Contains(Bold("test"), "\x1b[1m") {
+		t.Errorf("Bold missing ANSI code")
+	}
+	if !strings.Contains(Dim("test"), "\x1b[2m") {
+		t.Errorf("Dim missing ANSI code")
+	}
+	if !strings.Contains(Red("test"), "\x1b[31m") {
+		t.Errorf("Red missing ANSI code")
+	}
+	if !strings.Contains(Green("test"), "\x1b[32m") {
+		t.Errorf("Green missing ANSI code")
+	}
+	if !strings.Contains(Yellow("test"), "\x1b[33m") {
+		t.Errorf("Yellow missing ANSI code")
+	}
+	if !strings.Contains(Cyan("test"), "\x1b[36m") {
+		t.Errorf("Cyan missing ANSI code")
+	}
+
+	SetColorEnabled(false)
+	if Bold("test") != "test" {
+		t.Errorf("Bold with color disabled should return raw string")
+	}
+
+	SetAsciiMode(false)
+	if GlyphBoxTopLeft() != "╭" || GlyphCheck() != "✓" {
+		t.Errorf("UTF-8 glyphs incorrect")
+	}
+
+	SetAsciiMode(true)
+	if GlyphBoxTopLeft() != "+" || GlyphCheck() != "OK" {
+		t.Errorf("ASCII glyphs incorrect")
+	}
+}
+
+func TestPrintBoxHeader(t *testing.T) {
+	SetTermWidth(80)
+	SetAsciiMode(true)
+	SetColorEnabled(false)
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	PrintBoxHeader("TEST HEADER")
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	lines := strings.Split(strings.Trim(output, "\r\n"), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("PrintBoxHeader should print 3 lines, got %d", len(lines))
+	}
+	for i, l := range lines {
+		if StrWidth(l) != 80 {
+			t.Errorf("line %d visible width = %d, want 80", i, StrWidth(l))
+		}
+	}
+}

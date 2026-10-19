@@ -3,8 +3,10 @@
 package proc
 
 import (
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseProcStatus(t *testing.T) {
@@ -81,4 +83,48 @@ Dirty:               128 kB
 	if s.SwapUsed != expectedSwapUsed {
 		t.Errorf("s.SwapUsed = %d, want %d", s.SwapUsed, expectedSwapUsed)
 	}
+}
+
+func TestLiveProcReaderFunctions(t *testing.T) {
+	pid := os.Getpid()
+
+	uptime := ReadUptime()
+	if uptime <= 0 {
+		t.Errorf("ReadUptime() = %f, expected > 0", uptime)
+	}
+
+	sysSwap := ReadSystemSwap()
+	if sysSwap.MemTotal <= 0 {
+		t.Errorf("ReadSystemSwap() MemTotal = %d, expected > 0", sysSwap.MemTotal)
+	}
+
+	comm := ReadComm(pid)
+	if comm == "" {
+		t.Errorf("ReadComm(%d) returned empty string", pid)
+	}
+
+	cmdline := ReadCmdline(pid, "test-fallback")
+	if cmdline == "" {
+		t.Errorf("ReadCmdline(%d) returned empty string", pid)
+	}
+
+	args := ReadCmdlineArgs(pid)
+	if len(args) == 0 {
+		t.Errorf("ReadCmdlineArgs(%d) returned empty slice", pid)
+	}
+
+	ticks := ReadStartTicks(pid)
+	if ticks <= 0 {
+		t.Errorf("ReadStartTicks(%d) = %d, expected > 0", pid, ticks)
+	}
+
+	bootTime := time.Now().Add(-time.Duration(uptime * float64(time.Second)))
+	age := ReadProcessAge(pid, bootTime)
+	if age <= 0 {
+		t.Errorf("ReadProcessAge(%d) = %v, expected > 0", pid, age)
+	}
+
+	_ = ReadProcessLastActive(pid, uptime*1000.0)
+	_, _ = ReadProcStatus(pid)
+	_ = ReadVmSwap(pid)
 }

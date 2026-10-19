@@ -84,3 +84,44 @@ func TestRunDryRunCleanAll(t *testing.T) {
 		t.Errorf("Run(--dry-run --clean-all) output missing dry run header: %q", output)
 	}
 }
+
+func TestRunDefaultExecution(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--sort", "age", "--limit", "3", "--no-color", "--ascii", "--tmp-pattern", "test-*"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "SWAP & IN-MEMORY CACHE AUDITOR") {
+		t.Errorf("Run() output missing audit header: %q", output)
+	}
+	if !strings.Contains(output, "Quick Maintenance Commands") {
+		t.Errorf("Run() without clean flags missing quick commands: %q", output)
+	}
+}
+
+func TestStringSliceFlag(t *testing.T) {
+	var s stringSliceFlag
+	if err := s.Set("first"); err != nil {
+		t.Fatalf("Set() failed: %v", err)
+	}
+	if err := s.Set("second"); err != nil {
+		t.Fatalf("Set() failed: %v", err)
+	}
+	if s.String() != "first, second" {
+		t.Errorf("String() = %q, want %q", s.String(), "first, second")
+	}
+}

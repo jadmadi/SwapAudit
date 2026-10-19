@@ -36,10 +36,15 @@ func MatchTmpPattern(pattern, name string) bool {
 // ScanTmpDirectories scans /tmp for stale caches, abandoned runs, and temporary build outputs.
 // It verifies UID ownership, excludes symlinks and sockets, and walks directories to determine true age.
 func ScanTmpDirectories(now time.Time, maxAge time.Duration, patterns []string) []model.SwapItem {
+	return ScanTmpDirectoriesIn("/tmp", now, maxAge, patterns)
+}
+
+// ScanTmpDirectoriesIn scans a specified base directory for stale caches.
+func ScanTmpDirectoriesIn(baseDir string, now time.Time, maxAge time.Duration, patterns []string) []model.SwapItem {
 	var items []model.SwapItem
 	currentUid := uint32(os.Getuid())
 
-	entries, err := os.ReadDir("/tmp")
+	entries, err := os.ReadDir(baseDir)
 	if err != nil {
 		return items
 	}
@@ -65,7 +70,7 @@ func ScanTmpDirectories(now time.Time, maxAge time.Duration, patterns []string) 
 			continue
 		}
 
-		fullPath := filepath.Join("/tmp", name)
+		fullPath := filepath.Join(baseDir, name)
 		fi, err := os.Lstat(fullPath)
 		if err != nil {
 			continue

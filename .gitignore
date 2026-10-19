@@ -3,6 +3,8 @@
 *.exe
 *.test
 *.prof
+coverage.*
+coverage.html
 
 # OS & Editor
 .DS_Store
