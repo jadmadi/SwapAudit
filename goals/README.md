@@ -28,10 +28,10 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 10
-- 🟡 **Ready to Execute (Pending)**: 4 (3 independent ⚡, 1 unblocked 🔗)
-- 🟢 **Implemented**: 6 (6 verified 📜, 0 unverified)
+- 🟡 **Ready to Execute (Pending)**: 3 (3 independent ⚡, 0 unblocked 🔗)
+- 🟢 **Implemented**: 7 (7 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 4 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 24/37 completed (64%)
+- 📋 **Execution Tasks Progress**: 28/37 completed (75%)
 
 ---
 
@@ -42,7 +42,6 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `🗺️ Roadmap` | `🚢 SHIP ⚡ Independent` | - | Expand Cache Nested Directory Mtime Propagation Tests — Add unit tests for ScanTmpDirectoriesIn verifying that recently modified nested ... | `/goal goals/cache-mtime-propagation-tests/goal.md` |
 | [`cleaner-interactive-tests`](cleaner-interactive-tests/goal.md) | `🗺️ Roadmap` | `🚢 SHIP ⚡ Independent` | - | Expand Cleaner Interactive Input and Confirmation Tests — Add unit tests for AskConfirmationReader covering positive, negative, empty, and... | `/goal goals/cleaner-interactive-tests/goal.md` |
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `✨ Nice-to-Have` | `🚢 SHIP ⚡ Independent` | - | Expand Proc Stat Parsing and Malformed Input Tests — Add unit tests for ReadStartTicks and ReadProcessLastActive covering malformed p... | `/goal goals/proc-stat-edge-case-tests/goal.md` |
-| [`updater-boundary-tests`](updater-boundary-tests/goal.md) | `🎯 Immediate` | `🚢 SHIP 🔗 Ready` | Deps met: security-hardening-guards | Expand Updater Edge-Case and Download Boundary Tests — Add unit tests for HTTP error status handling, malformed checksums.txt lines, ov... | `/goal goals/updater-boundary-tests/goal.md` |
 
 ---
 
@@ -56,3 +55,4 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `9e578a7` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `f4f1f93` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `602fa2f` |
+| [`updater-boundary-tests`](updater-boundary-tests/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `9170277` |

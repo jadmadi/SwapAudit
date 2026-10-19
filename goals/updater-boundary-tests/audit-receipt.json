@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "updater-boundary-tests",
+  "commit_sha": "9170277c74e51b21d35df4dd82757a2cd0f5df39",
+  "spec_hash": "2e32d90c6c4866910b06380d46b400fc7803e579ba6adc174f129ac6d307a11d",
+  "sandbox_nonce": "0c532666b68da9d7",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "3AG+xhc0+8GYps9FCrEF2osQmb+4XMfUEwnsdDZjq/0=",
+  "auditor_signature": "L0L5u9rz+ZQ1M0xFr19g5slEjr7UzTa12VLLTAQ5+BIJUrFiAj69svQH0IjfObiB9JUJP4NmcTGjVduem/5MBw==",
+  "certified_at": "2026-10-19T10:47:01Z"
+}

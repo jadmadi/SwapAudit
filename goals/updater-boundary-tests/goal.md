@@ -1,5 +1,12 @@
 # Goal: Expand Updater Edge-Case and Download Boundary Tests
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_updater-boundary-tests_1792406821`
+
+
 ## Goal Description
 Add unit tests for HTTP error status handling, malformed checksums.txt lines, oversized stream cutoffs in downloadFile, and UID-scoped cache path resolution in internal/updater/updater_test.go.
 
