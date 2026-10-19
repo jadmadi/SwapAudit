@@ -1,5 +1,12 @@
 # Goal: Expand Proc Stat Parsing and Malformed Input Tests
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_proc-stat-edge-case-tests_1792407145`
+
+
 ## Goal Description
 Add unit tests for ReadStartTicks and ReadProcessLastActive covering malformed proc stat files, missing closing parentheses, fewer than 20 fields, and absent se.exec_start lines in proc_test.go.
 
