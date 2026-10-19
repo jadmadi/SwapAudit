@@ -1,7 +1,7 @@
 # Evidence: standalone-v0-1-0-release
 
 Date: 2026-10-19
-Repository: `github.com/jadmadi/SwapAudit` (private)
+Repository: `github.com/jadmadi/SwapAudit` (public as of 2026-10-19)
 Tag: `v0.1.0` at `faaa762`
 Release: `SwapAudit 0.1.0`, published 2026-10-19T19:38:10Z
 Release workflow: run `39312241427` — **success**
@@ -9,9 +9,9 @@ CI run before tag: `39311854804` — **success** (including Release Config & Ass
 
 ## Consent and visibility
 
-The user explicitly requested a **private** repository at `jadmadi/SwapAudit`. The repository remains private. Public visibility, public unauthenticated install, and a public install test were **not** approved and were not performed.
+The user requested a private repository initially, then explicitly approved the public release on 2026-10-19. The repository is now **public**.
 
-The private release is the approved scope. Public release remains a separate decision.
+Public visibility, public unauthenticated install, `go install`, and live `swapaudit upgrade` were verified. Five user interviews and the 14-day public measurement remain separate work in `public-install-demand-validation`.
 
 ## Release assets
 
@@ -47,6 +47,34 @@ Jobs:
 ```
 
 The workflow signs `checksums.txt` with cosign keyless (`cosign v2.4.1`) and verifies the signature in the post-release job.
+
+## Public release verification
+
+```text
+$ curl -s -o /dev/null -w '%{http_code}' https://github.com/jadmadi/SwapAudit
+200
+
+$ curl -sL -o /dev/null -w '%{http_code}' .../releases/download/v0.1.0/swapaudit-linux-amd64
+200
+
+$ ./scripts/verify-release.sh v0.1.0
+PASS: four architecture assets are publicly reachable
+PASS: checksums verified
+PASS: amd64 binary reports 0.1.0
+PASS: signature verified
+PASS: go install @v0.1.0
+Release verification passed for v0.1.0.
+
+$ ./scripts/install-smoke.sh v0.1.0
+Install smoke passed for v0.1.0.
+
+$ ./swapaudit-old upgrade   # v0.0.1 build
+Upgrading swapaudit v0.0.1 -> v0.1.0...
+Checksum verified successfully.
+✔ Successfully upgraded swapaudit to v0.1.0
+```
+
+The published amd64 binary ran in Debian bookworm-slim and Alpine 3.20 containers.
 
 ## Independent release verification
 

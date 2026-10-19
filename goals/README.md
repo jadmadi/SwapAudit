@@ -28,19 +28,26 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 15
-- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
-- 🔵 **In Progress (Claimed)**: 1
+- 🟡 **Ready to Execute (Pending)**: 1 (0 independent ⚡, 1 unblocked 🔗)
 - 🟢 **Implemented**: 14 (10 verified 📜, 4 unverified)
 - 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
 - 📋 **Execution Tasks Progress**: 281/338 completed (83%)
 
 ---
 
-## 🔵 In Progress (Claimed Goals)
+> 🧊 **Feature freeze until [`public-install-demand-validation`](public-install-demand-validation/goal.md) is certified.**
+>
+> Allowed: bug fixes, safety fixes, documentation, distribution, release verification, and prerequisite work.
+>
+> Not allowed: new scanners, agent runtimes, cleanup categories, JSON output, package-manager packages, GUI, daemon/watch mode, telemetry, pricing/paywall work, or scope expansion. Feature requests go to `docs/research/feature-backlog.md`.
 
-| Goal Package | Tier | Mode | Agent | Status & Note | Started |
+---
+
+## 🟡 Ready to Execute (Pending Goals)
+
+| Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🔗 Dep` | `@commandcode` | Prepared research protocol, interview script, install-smoke, and governance freeze; blocked on 5 interviews, public visibility, and 14-day public measurement. | 3m0s ago |
+| [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🚢 SHIP 🔗 Ready (#5)` | Deps met: standalone-v0-1-0-release | Validate Demand with Five User Interviews and a Public Install Test — Run the cheapest credible demand test before adding any feature: 1. **Five struc... | `/goal goals/public-install-demand-validation/goal.md` |
 
 ---
 

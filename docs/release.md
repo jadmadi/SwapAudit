@@ -2,13 +2,9 @@
 
 ## Consent and visibility
 
-The repository is currently **private**. Creating a public release, changing visibility, or publishing under a different namespace requires explicit maintainer approval. The release goal's consent record is `goals/standalone-v0-1-0-release/consent.md` (create it before a public release).
+The repository is **public** as of 2026-10-19. The release goal's consent record is `goals/standalone-v0-1-0-release/consent.md`.
 
-Until the repository is public:
-
-- Release assets are available only to authorized GitHub users.
-- `go install` requires GitHub authentication and `GOPRIVATE`.
-- `swapaudit upgrade` uses unauthenticated GitHub URLs; it cannot upgrade from a private repository. Use a source build or authenticated asset download until the repo is public.
+Public release assets, `go install`, and `swapaudit upgrade` are verified without authentication. Changing visibility or publishing under a different namespace still requires maintainer approval.
 
 ## Preflight
 
@@ -58,7 +54,7 @@ The tag triggers `.github/workflows/release.yml`:
 ./scripts/verify-release.sh v0.1.0
 ```
 
-If `cosign` is not installed locally, the script still checks the signature assets and prints a warning; install cosign to perform full verification. If `go install` cannot authenticate to the private repository, run with `SKIP_GO_INSTALL=1` and document the limitation.
+If `cosign` is not installed locally, the script still checks the signature assets and prints a warning; install cosign to perform full verification. The script uses the public release URLs and unauthenticated `go install`.
 
 ## Rollback
 
@@ -68,9 +64,9 @@ If `cosign` is not installed locally, the script still checks the signature asse
 
 ## Repository settings
 
-After publication (or for authorized private collaborators):
+After publication:
 
-- Enable Issues and Discussions.
+- Enable Issues and Discussions (done).
 - Enable Private Vulnerability Reporting and verify the URL in `SECURITY.md`.
 - Enable secret scanning and Dependabot alerts.
 - Protect `main` with required CI checks.
