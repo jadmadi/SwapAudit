@@ -121,6 +121,137 @@ func ReadVmSwap(pid int) int64 {
 	return swapBytes
 }
 
+// ParseProcStatusUID returns the real UID from the Uid: line in /proc/[pid]/status.
+func ParseProcStatusUID(r io.Reader) (uint32, error) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "Uid:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("malformed Uid line")
+		}
+		val, err := strconv.ParseUint(fields[1], 10, 32)
+		if err != nil {
+			return 0, fmt.Errorf("parse Uid: %w", err)
+		}
+		return uint32(val), nil
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+	return 0, fmt.Errorf("Uid line not found")
+}
+
+// ReadProcUID returns the real UID of pid.
+func ReadProcUID(pid int) (uint32, error) {
+	f, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	return ParseProcStatusUID(f)
+}
+
+// ReadTTYNr returns field 7 (tty_nr) from /proc/[pid]/stat, or 0 if unavailable.
+func ReadTTYNr(pid int) int64 {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if err != nil {
+		return 0
+	}
+	content := string(data)
+	idx := strings.LastIndex(content, ")")
+	if idx == -1 || idx+2 >= len(content) {
+		return 0
+	}
+	fields := strings.Fields(content[idx+2:])
+	// Fields after comm start at field 3 (state); tty_nr is field 7.
+	if len(fields) < 5 {
+		return 0
+	}
+	tty, err := strconv.ParseInt(fields[4], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return tty
+}
+
+// ReadProcessCgroup returns the unified cgroup path from /proc/[pid]/cgroup, or "" if unavailable.
+func ReadProcessCgroup(pid int) string {
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/cgroup", pid))
+	if err != nil {
+		return ""
+	}
+	var fallback string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 3)
+		if len(parts) != 3 {
+			continue
+		}
+		if parts[0] == "0" && parts[1] == "" {
+			return parts[2]
+		}
+		if fallback == "" {
+			fallback = parts[2]
+		}
+	}
+	return fallback
+}
+
+// OrphanEvidence captures the evidence used to classify a reparented process.
+type OrphanEvidence struct {
+	PPID       int
+	ParentComm string
+	Cgroup     string
+	TTYNr      int64
+	Reason     string
+}
+
+func classifyOrphan(parentAlive bool, parentComm, cgroup string, ttyNr int64) (string, bool) {
+	if parentAlive && parentComm != "systemd" && parentComm != "init" {
+		return "parent-alive", false
+	}
+	if strings.Contains(cgroup, ".service") && !strings.Contains(cgroup, ".scope") {
+		return "systemd-service", false
+	}
+	if ttyNr == 0 {
+		return "no-controlling-terminal", false
+	}
+	if strings.Contains(cgroup, ".scope") || strings.Contains(cgroup, "session-") {
+		return "reparented-terminal-scope", true
+	}
+	return "ambiguous-evidence", false
+}
+
+// ClassifyOrphan returns true only when the process is a plausible
+// terminal-launched agent whose parent shell has died. Ambiguous evidence
+// always returns false.
+func ClassifyOrphan(pid, ppid int) (OrphanEvidence, bool) {
+	ev := OrphanEvidence{
+		PPID:   ppid,
+		Cgroup: ReadProcessCgroup(pid),
+		TTYNr:  ReadTTYNr(pid),
+	}
+
+	parentAlive := false
+	if ppid > 1 {
+		if _, err := os.Stat(fmt.Sprintf("/proc/%d", ppid)); err == nil {
+			parentAlive = true
+			ev.ParentComm = ReadComm(ppid)
+		}
+	}
+
+	reason, orphaned := classifyOrphan(parentAlive, ev.ParentComm, ev.Cgroup, ev.TTYNr)
+	ev.Reason = reason
+	return ev, orphaned
+}
+
 // ReadComm returns the process command name from /proc/[pid]/comm.
 func ReadComm(pid int) string {
 	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
@@ -195,21 +326,6 @@ func CalcProcessAge(startTicks int64, bootTime time.Time) time.Duration {
 // Note: clock ticks are assumed to be 100 Hz (USER_HZ on standard Linux).
 func ReadProcessAge(pid int, bootTime time.Time) time.Duration {
 	return CalcProcessAge(ReadStartTicks(pid), bootTime)
-}
-
-// IsProcessOrphaned determines if a child process has lost its parent.
-// On Linux, deceased parents result in ppid <= 1 (init) or reparenting
-// to the user manager subreaper (systemd).
-func IsProcessOrphaned(ppid int) bool {
-	if ppid <= 1 {
-		return true
-	}
-	statPath := fmt.Sprintf("/proc/%d", ppid)
-	if _, err := os.Stat(statPath); os.IsNotExist(err) {
-		return true
-	}
-	parentComm := ReadComm(ppid)
-	return parentComm == "systemd" || parentComm == "init"
 }
 
 // ReadProcessLastActive parses se.exec_start from /proc/[pid]/sched to determine process idle time.

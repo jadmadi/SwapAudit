@@ -28,21 +28,20 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 15
-- 🟡 **Ready to Execute (Pending)**: 3 (3 independent ⚡, 0 unblocked 🔗)
+- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
+- 🔵 **In Progress (Claimed)**: 1
 - ⛔ **Blocked on Prerequisites**: 2
-- 🟢 **Implemented**: 10 (7 verified 📜, 3 stale ⚠️, 0 unverified)
+- 🟢 **Implemented**: 10 (10 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
 - 📋 **Execution Tasks Progress**: 37/338 completed (10%)
 
 ---
 
-> 🧊 **Feature freeze until [`public-install-demand-validation`](public-install-demand-validation/goal.md) is certified.**
->
-> **Allowed:** bug fixes, safety fixes, documentation, distribution, release verification, and the three prerequisite goals.
->
-> **Not allowed:** new scanners, new agent runtimes, new cleanup categories, JSON output, package-manager packages, GUI, daemon/watch mode, telemetry, pricing/paywall work, or any scope expansion.
->
-> New feature goals must not be created or claimed. Record requests in `docs/research/feature-backlog.md` and wait for the dated decision in `docs/research/decision.md`.
+## 🔵 In Progress (Claimed Goals)
+
+| Goal Package | Tier | Mode | Agent | Status & Note | Started |
+| :--- | :---: | :---: | :--- | :--- | :--- |
+| [`cleanup-orphan-uid-safety`](cleanup-orphan-uid-safety/goal.md) | `🎯 Immediate` | `⚡ Indep` | `@commandcode` | Implementing fail-closed orphan detection, UID safety, and destructive-claim fixes | 0s ago |
 
 ---
 
@@ -50,7 +49,6 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`cleanup-orphan-uid-safety`](cleanup-orphan-uid-safety/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#1)` | - | Harden Orphan Detection, Process UID Safety, and Destructive Cleanup Claims — Fix the three highest-risk trust defects in swapaudit's destructive path: 1. `Is... | `/goal goals/cleanup-orphan-uid-safety/goal.md` |
 | [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#2)` | - | Make the Update Check Consent-Based and Truthful — Resolve the contradiction between `GOVERNANCE.md` ("does not phone home") and th... | `/goal goals/update-check-consent-disclosure/goal.md` |
 | [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#3)` | - | Consolidate Security, Support, and Vulnerability Reporting Contacts — Replace the inconsistent and partly unusable security/support surface with one c... | `/goal goals/security-contact-consolidation/goal.md` |
 | [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#4)` | Prereqs: cleanup-orphan-uid-safety, update-check-consent-disclosure, security-contact-consolidation | Publish Standalone Repository and v0.1.0 Release with Four Assets — Turn the untracked local project into a public, installable, verifiable standalo... | `/goal goals/standalone-v0-1-0-release/goal.md` |
@@ -63,11 +61,11 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | Goal Package | Mode | Shape | Verification | Task / Ref | Commit |
 | :--- | :---: | :--- | :---: | :--- | :--- |
 | [`security-hardening-guards`](security-hardening-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `fc6640d55580576547bc841728758df1d5b62bf5` |
-| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `f01f0cb` |
+| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `d1d43360993af5d9c1ea675339a394c02e465ad3` |
 | [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `003aaa91687d3a3b57a76bc4632ff6ccbf488ab1` |
 | [`cleaner-interactive-tests`](cleaner-interactive-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `3162132ccf129911b3e9ecd53b05244b775c57ca` |
-| [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `af4ce6f` |
-| [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `5790fea` |
+| [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `3854d3bb49a39ebd29b778a9f371c0874d181266` |
+| [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `9e578a72c64d494714f74b490baa1396d7c1b3ca` |
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `ea9a60d5e17ef35d1b5c57cd4a8050bc4980dbc5` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `f4f1f9339befb56ef5400c6db09a3f354e7109a8` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `602fa2f57a75f47311499cd7a498f9532641ab33` |

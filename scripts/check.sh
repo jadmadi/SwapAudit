@@ -119,6 +119,19 @@ fi
 echo -e "   ${GREEN}✔ Diff sentry clean.${RESET}"
 
 # -----------------------------------------------------------------------------
+# 1b. Claims Sentry: unverified destructive claims
+# -----------------------------------------------------------------------------
+echo -e "\n${BOLD}1b. Running Claims Sentry (unverified destructive claims)...${RESET}"
+CLAIM_HITS=$(grep -RInE 'Conversations stay preserved|conversations stay preserved|100% safe|guaranteed safe' \
+    --exclude-dir=.git --exclude-dir=goals --exclude-dir=business-reviews --exclude='check.sh' . 2>/dev/null || true)
+if [[ -n "${CLAIM_HITS}" ]]; then
+    echo -e "   ${RED}✖ Error: unverified destructive claim found:${RESET}"
+    echo "${CLAIM_HITS}" | sed 's/^/     /'
+    exit 1
+fi
+echo -e "   ${GREEN}✔ Claims sentry clean.${RESET}"
+
+# -----------------------------------------------------------------------------
 # 2. Go Formatting (gofmt)
 # -----------------------------------------------------------------------------
 echo -e "\n${BOLD}2. Checking Go Formatting (gofmt)...${RESET}"

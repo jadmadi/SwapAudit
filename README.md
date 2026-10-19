@@ -2,7 +2,7 @@
 
 **Linux swap, RAM, and tmpfs auditor with guarded cleanup.**
 
-> **Status: private, pre-v0.1.0.** The source builds and runs, but release binaries, `go install`, and self-upgrade are not published yet. The safety-hardening goal is pending: use `--dry-run` and avoid `--clean-all` as root until it lands. See [`goals/README.md`](goals/README.md).
+> **Status: private, pre-v0.1.0.** The source builds and runs, but release binaries, `go install`, and self-upgrade are not published yet. Cleanup safety hardening is implemented; use `--dry-run` first and review each target. See [`docs/safety.md`](docs/safety.md) and [`goals/README.md`](goals/README.md).
 
 ## The answer
 
@@ -127,26 +127,23 @@ Example output (illustrative):
 
 ## Safety model
 
-### Current guards
+### Guards
 
 - **Dry-run first:** `--dry-run` never calls `syscall.Kill` or `os.RemoveAll`.
 - **PID reuse protection:** the cleaner re-reads `/proc/[pid]/stat` start ticks immediately before `SIGTERM`.
 - **PID floors:** PID `<= 1` and the current process are skipped.
+- **UID ownership:** process targets must match the current real UID. `--all-users` is required for another user's processes and prints a warning once per group.
 - **Path confinement:** file cleanup is limited to `/tmp/`, `/var/tmp/`, or `os.TempDir()`.
 - **Symlink rejection:** top-level symlink targets are rejected; `WalkDir` does not follow symlinks.
 - **File ownership:** file targets are checked against the current UID before removal.
+- **Orphan evidence:** a process is orphaned only when the cgroup/tty evidence indicates a reparented terminal session. `.service` cgroups, missing terminals, and ambiguous evidence fail closed.
+- **Orphan opt-in:** `--clean-all` covers untouched caches, abandoned runs, and dormant agents only. Use `--include-orphaned` with `--clean-all`, or `--clean-orphaned` alone.
 - **Confirmation:** each cleanup group prompts unless `--yes` is set.
+- **Signal caveat:** `SIGTERM` can lose unsaved in-memory agent state. SwapAudit does not verify conversation persistence.
 
-### Pending hardening (do not ignore)
+The full contract, including the manual systemd/other-UID verification protocol, is in [`docs/safety.md`](docs/safety.md).
 
-The safety goal [`cleanup-orphan-uid-safety`](goals/cleanup-orphan-uid-safety/goal.md) is **pending**. Until it lands:
-
-- `--clean-all` currently includes orphaned-agent cleanup. Prefer targeted flags (`--clean-untouched`, `--clean-abandoned`, `--clean-dormant`).
-- Process termination does **not** yet enforce target UID ownership. Do not run `--clean-all` or `--clean-orphaned` as root.
-- Orphan detection treats a `systemd`/`init` parent as orphaned; it can misclassify a legitimate systemd-managed agent.
-- The dormant-cleanup prompt does not verify agent conversation persistence. Back up or test with a disposable session.
-
-**Recommended until the hardening lands:** run `--dry-run`, review every target, then run one category at a time as your normal user.
+**Recommended workflow:** run `--dry-run`, review every target, then run one category at a time as your normal user.
 
 ## What it detects
 
@@ -155,7 +152,7 @@ The safety goal [`cleanup-orphan-uid-safety`](goals/cleanup-orphan-uid-safety/go
 | `untouched-caches` | `go-build*`, directories containing `cache` | After `--max-age` with no nested writes |
 | `abandoned-runs` | `test*`, `tmp-*`, `tsx-*`, `npm-*`, custom `--tmp-pattern` | After `--max-age` with no nested writes |
 | `dormant-agents` | `agy`, `devin`, `chrome-devtools`, `antigravity` | Idle beyond `--idle-threshold` |
-| `abandoned-agents` | Same runtimes with a deceased/reparented parent | Current heuristic; pending fail-closed fix |
+| `abandoned-agents` | Same runtimes with cgroup/tty evidence of a reparented terminal session | Evidence-gated; ambiguous cases are protected |
 | `active-caches` | Recently written caches | Protected |
 | `desktop-daemons` | KDE, systemd, dbus, pipewire and similar | Protected |
 | `active-apps` | Everything else | Protected |
@@ -179,9 +176,11 @@ The safety goal [`cleanup-orphan-uid-safety`](goals/cleanup-orphan-uid-safety/go
 | `--clean-untouched` | `false` | Prune stale build caches beyond `--max-age` |
 | `--clean-abandoned` | `false` | Prune abandoned test/review runs in `/tmp` |
 | `--clean-dormant` | `false` | `SIGTERM` dormant agent sessions beyond `--idle-threshold` |
-| `--clean-orphaned` | `false` | `SIGTERM` orphaned agent sessions (pending hardening) |
+| `--clean-orphaned` | `false` | `SIGTERM` evidence-gated orphaned agent sessions |
 | `--clean-tmp` | `false` | Prune untouched and abandoned `/tmp` caches |
-| `--clean-all` | `false` | Untouched + abandoned + dormant (+ orphaned until the safety goal lands) |
+| `--clean-all` | `false` | Untouched + abandoned + dormant cleanup; excludes orphaned |
+| `--include-orphaned` | `false` | Include orphaned cleanup with `--clean-all` |
+| `--all-users` | `false` | Allow signaling processes owned by other UIDs |
 | `--dry-run` | `false` | Preview without deleting or signaling |
 | `-y`, `--yes` | `false` | Skip confirmation prompts |
 | `--max-age <duration>` | `12h` | Stale-cache cutoff |

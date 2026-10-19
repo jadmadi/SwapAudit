@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jadmadi/swapaudit/internal/cleaner"
 	"github.com/jadmadi/swapaudit/internal/updater"
 )
 
@@ -213,5 +214,111 @@ func TestRunCachedUpdateNotice(t *testing.T) {
 	}
 	if !strings.Contains(output, "A new release of swapaudit is available") {
 		t.Errorf("expected update notice for cached newer version, got: %q", output)
+	}
+}
+
+func TestResolveCleanupFlags(t *testing.T) {
+	tests := []struct {
+		name      string
+		cleanAll  bool
+		untouched bool
+		abandoned bool
+		dormant   bool
+		orphaned  bool
+		include   bool
+		want      cleaner.CleanupFlags
+	}{
+		{"none", false, false, false, false, false, false, cleaner.CleanupFlags{}},
+		{"explicit untouched", false, true, false, false, false, false, cleaner.CleanupFlags{Untouched: true}},
+		{"clean all excludes orphan", true, false, false, false, false, false, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true}},
+		{"clean all includes orphan on opt-in", true, false, false, false, false, true, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true, Orphaned: true}},
+		{"explicit orphan", false, false, false, false, true, false, cleaner.CleanupFlags{Orphaned: true}},
+		{"include only is inert", false, false, false, false, false, true, cleaner.CleanupFlags{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveCleanupFlags(tt.cleanAll, tt.untouched, tt.abandoned, tt.dormant, tt.orphaned, tt.include)
+			if got != tt.want {
+				t.Errorf("ResolveCleanupFlags() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunCleanAllExcludesOrphanGroup(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--dry-run", "--clean-all", "--no-update-check", "--no-color", "--ascii", "--limit", "1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if strings.Contains(output, "Orphaned Agent Processes") {
+		t.Errorf("--clean-all must not include orphaned cleanup, got:\n%s", output)
+	}
+}
+
+func TestRunCleanAllIncludeOrphaned(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--dry-run", "--clean-all", "--include-orphaned", "--no-update-check", "--no-color", "--ascii", "--limit", "1"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "Orphaned Agent Processes") {
+		t.Errorf("--include-orphaned should include the orphan group, got:\n%s", output)
+	}
+}
+
+func TestHelpMentionsSafetyFlags(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--help"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run(--help) exit code = %d, want 0", code)
+	}
+	for _, flag := range []string{"--all-users", "--include-orphaned"} {
+		if !strings.Contains(output, flag) {
+			t.Errorf("help output missing %s:\n%s", flag, output)
+		}
 	}
 }
