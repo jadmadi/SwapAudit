@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- LimitReader bounds (50MB binary, 1MB checksum) to protect self-updater against unbounded streams.
+- UID-scoped fallback paths for temporary update-check state caches.
+- Interactive reader edge-case and live temporary pruning unit test coverage.
+- Deep nested directory modification time propagation and symlink exclusion tests for cache inspection.
+- Malformed proc stat and scheduler line parsing unit tests.
+
+### Changed
+- Enforced fail-closed temporary file creation in build script.
+
 ## [0.1.0] - 2026-10-19
 
 ### Added
