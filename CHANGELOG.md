@@ -59,3 +59,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build tooling including GoReleaser v2 configuration, multi-mode build script, and Makefile.
 - Continuous integration workflows for automated race detection, linting, and cross-compilation.
 - Dual-licensing under Waqf Digital Public License (WaqfDPL-Mulzim 1.0) and GNU AGPLv3.
+
+### Known limitations
+- Linux only; uses `/proc` and Linux cgroups.
+- RAM used relies on `MemAvailable` (Linux 3.14+).
+- Scans `/tmp`, not `/var/tmp`.
+- Agent detection covers `agy`, `devin`, `chrome-devtools`, and `antigravity`.
+- No JSON output, package-manager package, GUI, or daemon.
+- The repository is private; unauthenticated install and self-upgrade are not available until publication.

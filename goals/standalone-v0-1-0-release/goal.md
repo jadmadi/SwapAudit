@@ -9,7 +9,7 @@
 
 ## Goal Description
 
-Turn the untracked local project into a public, installable, verifiable standalone release:
+Turn the local project into a **private**, installable, verifiable standalone release. Public publication is a separate decision; the user requested a private repository.
 
 - Create a clean standalone repository at the maintainer-confirmed URL (currently intended: `github.com/jadmadi/swapaudit`).
 - Import the source without the parent worktree's history, local build artifacts, internal agent configuration, business-review notes, or unverifiable goal receipts.

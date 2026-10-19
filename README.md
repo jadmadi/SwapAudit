@@ -102,6 +102,13 @@ gh release download v0.1.0 --repo jadmadi/SwapAudit \
 
 `scripts/verify-release.sh` checks the four architecture asset names, checksums, the amd64 version string, and the cosign signature when cosign is installed. The release is signed with cosign keyless in GitHub Actions.
 
+| Architecture | Release asset |
+| --- | --- |
+| amd64 | `swapaudit-linux-amd64` |
+| arm64 | `swapaudit-linux-arm64` |
+| armv7 | `swapaudit-linux-armv7` |
+| riscv64 | `swapaudit-linux-riscv64` |
+
 ## First run
 
 ```bash
