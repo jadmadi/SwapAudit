@@ -3,6 +3,7 @@
 package app
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -63,20 +64,22 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 
 		comm := proc.ReadComm(pid)
 		argv := proc.ReadCmdlineArgs(pid)
-		cmd := proc.ReadCmdline(pid, comm)
-		age := proc.ReadProcessAge(pid, bootTime)
+		cmd := proc.FormatCmdline(argv, comm)
+		startTicks := proc.ReadStartTicks(pid)
+		age := proc.CalcProcessAge(startTicks, bootTime)
 		lastActive := proc.ReadProcessLastActive(pid, uptimeMs)
 		lastActiveAt := now.Add(-lastActive)
+		isOrphaned := proc.IsProcessOrphaned(ppid)
 
-		cat, cleanable := triage.CategorizeProcess(comm, argv, pid, ppid, lastActive, idleThreshold)
+		cat, cleanable := triage.CategorizeProcess(comm, argv, pid, ppid, isOrphaned, lastActive, idleThreshold)
 
 		dispName := comm
 		hasConv := false
 		for i, arg := range argv {
 			if arg == "--conversation" && i+1 < len(argv) {
 				targetId := argv[i+1]
-				if len(targetId) > 8 {
-					targetId = targetId[:8]
+				if runes := []rune(targetId); len(runes) > 8 {
+					targetId = string(runes[:8])
 				}
 				dispName = fmt.Sprintf("agy [%s]", targetId)
 				hasConv = true
@@ -92,7 +95,6 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 			}
 		}
 
-		startTicks := proc.ReadStartTicks(pid)
 		items = append(items, model.SwapItem{
 			PID:          pid,
 			StartTicks:   startTicks,
@@ -115,6 +117,9 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 func Run(args []string) int {
 	if len(args) > 0 {
 		switch args[0] {
+		case "help", "-h", "--help":
+			PrintUsage(os.Stdout)
+			return 0
 		case "upgrade", "--upgrade":
 			if len(args) > 1 && (args[1] == "-h" || args[1] == "--help" || args[1] == "help") {
 				fmt.Println("Usage: swapaudit upgrade")
@@ -154,6 +159,10 @@ func Run(args []string) int {
 	fs.BoolVar(showVersion, "v", false, "Alias for --version")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			PrintUsage(os.Stdout)
+			return 0
+		}
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
 	}

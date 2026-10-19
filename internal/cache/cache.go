@@ -15,9 +15,8 @@ import (
 
 // DefaultTmpPatterns lists common prefixes/wildcards for test and temporary run directories in /tmp.
 var DefaultTmpPatterns = []string{
-	"cs1*", "cs2*", "thermodynamic*", "Test*", "test*",
-	"sila*", "manara*", "muhaffiz*", "commandcode*", "orthemology*",
-	"test-bwrap*", "tsx-*", "rustup-update*",
+	"go-build*", "Test*", "test*", "test-bwrap*", "tsx-*",
+	"tmp-*", "temp-*", "rustup-update*", "cargo-install*", "npm-*",
 }
 
 // MatchTmpPattern checks if a directory name matches a shell pattern or prefix.

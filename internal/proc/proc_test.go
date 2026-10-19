@@ -128,3 +128,38 @@ func TestLiveProcReaderFunctions(t *testing.T) {
 	_, _ = ReadProcStatus(pid)
 	_ = ReadVmSwap(pid)
 }
+
+func TestFormatCmdline(t *testing.T) {
+	if got := FormatCmdline(nil, "fallback"); got != "[fallback]" {
+		t.Errorf("FormatCmdline(nil) = %q, want [fallback]", got)
+	}
+	if got := FormatCmdline([]string{"app", "--flag"}, "fallback"); got != "app --flag" {
+		t.Errorf("FormatCmdline() = %q, want app --flag", got)
+	}
+}
+
+func TestCalcProcessAge(t *testing.T) {
+	bootTime := time.Now().Add(-100 * time.Second)
+	age := CalcProcessAge(5000, bootTime)
+	if age < 45*time.Second || age > 55*time.Second {
+		t.Errorf("CalcProcessAge() = %v, expected ~50s", age)
+	}
+	if ageZero := CalcProcessAge(0, bootTime); ageZero != 0 {
+		t.Errorf("CalcProcessAge(0) = %v, want 0", ageZero)
+	}
+}
+
+func TestIsProcessOrphaned(t *testing.T) {
+	if !IsProcessOrphaned(1) {
+		t.Errorf("IsProcessOrphaned(1) = false, want true")
+	}
+	if !IsProcessOrphaned(0) {
+		t.Errorf("IsProcessOrphaned(0) = false, want true")
+	}
+	if !IsProcessOrphaned(-1) {
+		t.Errorf("IsProcessOrphaned(-1) = false, want true")
+	}
+	if !IsProcessOrphaned(9999999) {
+		t.Errorf("IsProcessOrphaned(9999999) = false, want true")
+	}
+}

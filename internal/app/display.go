@@ -4,6 +4,7 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strconv"
 	"strings"
@@ -453,4 +454,46 @@ func PrintQuickCommands() {
 	cmd("--dry-run", "Preview cleanup actions without touching files or processes")
 	cmd("upgrade", "Upgrade swapaudit to the latest released version")
 	fmt.Println()
+}
+
+// PrintUsage renders the CLI help and flag usage documentation.
+func PrintUsage(w io.Writer) {
+	fmt.Fprintln(w, "swapaudit — Linux workstation swap, RAM, and in-memory cache auditor")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "USAGE:")
+	fmt.Fprintln(w, "  swapaudit [FLAGS]")
+	fmt.Fprintln(w, "  swapaudit upgrade")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "COMMANDS:")
+	fmt.Fprintln(w, "  upgrade                   Check GitHub releases and upgrade swapaudit in place")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "AUDIT & DISPLAY FLAGS:")
+	fmt.Fprintln(w, "  --sort <size|age>         Sort column for occupant table (default: size)")
+	fmt.Fprintln(w, "  --limit <N>               Maximum rows to display in main table (default: 12)")
+	fmt.Fprintln(w, "  --all                     Display all processes individually without aggregation")
+	fmt.Fprintln(w, "  --max-age <duration>      Cutoff age for stale /tmp caches (default: 12h)")
+	fmt.Fprintln(w, "  --idle-threshold <dur>    Idle time threshold for dormant agents (default: 2h)")
+	fmt.Fprintln(w, "  --tmp-pattern <pattern>   Additional /tmp directory glob pattern (repeatable)")
+	fmt.Fprintln(w, "  --no-color                Disable ANSI color styling")
+	fmt.Fprintln(w, "  --ascii                   Use plain ASCII box borders instead of Unicode glyphs")
+	fmt.Fprintln(w, "  --no-update-check         Skip background 24-hour release check")
+	fmt.Fprintln(w, "  -v, --version             Print version metadata and exit")
+	fmt.Fprintln(w, "  -h, --help                Show this help message and exit")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "CLEANUP ACTIONS:")
+	fmt.Fprintln(w, "  --clean-untouched         Prune untouched compiler & build caches (> 12h old)")
+	fmt.Fprintln(w, "  --clean-abandoned         Prune abandoned test runner directories (> 12h idle)")
+	fmt.Fprintln(w, "  --clean-dormant           Stop dormant AI agent processes (> 2h idle)")
+	fmt.Fprintln(w, "  --clean-orphaned          End orphaned agent processes whose parent shell died")
+	fmt.Fprintln(w, "  --clean-tmp               Clean all stale /tmp caches (untouched + abandoned)")
+	fmt.Fprintln(w, "  --clean-all               Execute all safe cleanup actions")
+	fmt.Fprintln(w, "  --dry-run                 Simulate cleanup actions without touching files/processes")
+	fmt.Fprintln(w, "  -y, --yes                 Bypass confirmation prompts during cleanup")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "EXAMPLES:")
+	fmt.Fprintln(w, "  swapaudit                               # Run complete interactive swap audit")
+	fmt.Fprintln(w, "  swapaudit --sort age --limit 20         # Inspect older swap occupant processes")
+	fmt.Fprintln(w, "  swapaudit --dry-run --clean-all         # Preview what would be reclaimed")
+	fmt.Fprintln(w, "  swapaudit --clean-tmp                   # Prune stale /tmp build and test caches")
+	fmt.Fprintln(w, "  swapaudit upgrade                       # Upgrade binary to latest release")
 }

@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
@@ -15,10 +16,16 @@ import (
 	"github.com/jadmadi/swapaudit/internal/term"
 )
 
+var defaultStdinReader = bufio.NewReader(os.Stdin)
+
 // AskConfirmation prompts the user via stdin for [y/N] confirmation.
 func AskConfirmation(prompt string) bool {
+	return AskConfirmationReader(defaultStdinReader, prompt)
+}
+
+// AskConfirmationReader prompts via the provided reader for [y/N] confirmation.
+func AskConfirmationReader(reader *bufio.Reader, prompt string) bool {
 	fmt.Printf("%s [y/N]: ", prompt)
-	reader := bufio.NewReader(os.Stdin)
 	ans, err := reader.ReadString('\n')
 	if err != nil {
 		return false
@@ -60,14 +67,18 @@ func PruneTmpTargets(targets []model.SwapItem, groupTitle, prompt string, dryRun
 	var hiddenBytes int64
 	var reclaimed int64
 	for _, t := range targets {
+		cleanPath := filepath.Clean(t.Path)
+		if cleanPath == "" || cleanPath == "." || cleanPath == "/" || cleanPath == "/tmp" || cleanPath == "/var/tmp" || !filepath.IsAbs(cleanPath) {
+			continue
+		}
 		if !dryRun {
-			if err := os.RemoveAll(t.Path); err != nil {
-				fmt.Printf("  %s%s failed to prune %s: %v\n", prefix, term.Red(term.GlyphCross()), t.Path, err)
+			if err := os.RemoveAll(cleanPath); err != nil {
+				fmt.Printf("  %s%s failed to prune %s: %v\n", prefix, term.Red(term.GlyphCross()), cleanPath, err)
 				continue
 			}
 		}
 		if shown < limit || t.SizeBytes >= 10*1024*1024 {
-			tPath := term.Truncate(t.Path, pathWidth)
+			tPath := term.Truncate(cleanPath, pathWidth)
 			pad := pathWidth - term.StrWidth(tPath)
 			if pad < 0 {
 				pad = 0

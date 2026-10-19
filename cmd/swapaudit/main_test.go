@@ -18,15 +18,17 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	defer os.RemoveAll(tmpDir)
 
 	testBinaryPath = filepath.Join(tmpDir, "swapaudit")
 	cmd := exec.Command("go", "build", "-o", testBinaryPath, "github.com/jadmadi/swapaudit/cmd/swapaudit")
 	if out, err := cmd.CombinedOutput(); err != nil {
+		os.RemoveAll(tmpDir)
 		panic(string(out))
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+	os.RemoveAll(tmpDir)
+	os.Exit(code)
 }
 
 func runCLI(t *testing.T, args ...string) (string, string, int) {
@@ -61,12 +63,12 @@ func TestE2E_Version(t *testing.T) {
 
 func TestE2E_Help(t *testing.T) {
 	stdout, _, code := runCLI(t, "--help")
-	// Standard flag.ContinueOnError prints help to stderr on -h / --help and exits 2 or 0
-	combined := stdout
-	if code != 0 && code != 2 {
-		t.Fatalf("expected exit code 0 or 2, got %d", code)
+	if code != 0 {
+		t.Fatalf("expected exit code 0 on --help, got %d", code)
 	}
-	_ = combined
+	if !strings.Contains(stdout, "USAGE:") || !strings.Contains(stdout, "swapaudit") {
+		t.Errorf("expected help output to contain USAGE and swapaudit, got: %q", stdout)
+	}
 }
 
 func TestE2E_UpgradeHelp(t *testing.T) {

@@ -78,11 +78,21 @@ func SaveState(path string, s *State) error {
 	if err != nil {
 		return err
 	}
-	tmp := fmt.Sprintf("%s.tmp.%d", path, os.Getpid())
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	tmp, err := os.CreateTemp(dir, ".state.tmp.*")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 // cleanVersion strips prefix 'v' or 'V' and any metadata or dirty suffixes.
@@ -358,12 +368,21 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 	}
 
 	arch := runtime.GOARCH
+	if arch == "arm" {
+		arch = "armv7"
+	}
 	assetName := fmt.Sprintf("swapaudit-linux-%s", arch)
 	assetURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repo, latest, assetName)
 	checksumURL := fmt.Sprintf("https://github.com/%s/releases/download/%s/checksums.txt", repo, latest)
 
 	fmt.Fprintf(out, "Downloading %s from %s...\n", assetName, assetURL)
-	tmpBin := filepath.Join(targetDir, fmt.Sprintf(".swapaudit.tmp.%d", os.Getpid()))
+	tmpFile, err := os.CreateTemp(targetDir, ".swapaudit.tmp.*")
+	if err != nil {
+		fmt.Fprintf(errOut, "Error creating temp file in %s: %v\n", targetDir, err)
+		return 1
+	}
+	tmpBin := tmpFile.Name()
+	tmpFile.Close()
 	defer os.Remove(tmpBin)
 
 	if err := downloadFile(client, assetURL, tmpBin); err != nil {
@@ -371,21 +390,23 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 		return 1
 	}
 
-	// Verify checksum if available
+	// Verify checksum (fail-closed)
 	expectedChecksum := fetchChecksum(client, checksumURL, assetName)
-	if expectedChecksum != "" {
-		actualChecksum, err := computeSHA256(tmpBin)
-		if err != nil {
-			fmt.Fprintf(errOut, "Error computing binary checksum: %v\n", err)
-			return 1
-		}
-		if !strings.EqualFold(actualChecksum, expectedChecksum) {
-			fmt.Fprintf(errOut, "Checksum mismatch for %s:\n  expected: %s\n  actual:   %s\n",
-				assetName, expectedChecksum, actualChecksum)
-			return 1
-		}
-		fmt.Fprintln(out, "Checksum verified successfully.")
+	if expectedChecksum == "" {
+		fmt.Fprintf(errOut, "Error: checksum for %s missing from release checksums (%s)\n", assetName, checksumURL)
+		return 1
 	}
+	actualChecksum, err := computeSHA256(tmpBin)
+	if err != nil {
+		fmt.Fprintf(errOut, "Error computing binary checksum: %v\n", err)
+		return 1
+	}
+	if !strings.EqualFold(actualChecksum, expectedChecksum) {
+		fmt.Fprintf(errOut, "Checksum mismatch for %s:\n  expected: %s\n  actual:   %s\n",
+			assetName, expectedChecksum, actualChecksum)
+		return 1
+	}
+	fmt.Fprintln(out, "Checksum verified successfully.")
 
 	if err := os.Chmod(tmpBin, 0o755); err != nil {
 		fmt.Fprintf(errOut, "Error setting executable permissions: %v\n", err)
@@ -404,14 +425,11 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 		ReleaseURL:    releaseURL,
 	})
 
-	// Also synchronize active go script directory if it exists and differs
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		activeTarget := filepath.Join(home, "scripts", "active", "go", "swapaudit")
-		if activeTarget != selfPath {
-			if fi, err := os.Stat(activeTarget); err == nil && !fi.IsDir() {
-				if copyErr := copyFileAtomic(selfPath, activeTarget); copyErr == nil {
-					fmt.Fprintf(out, "Synchronized active go binary at %s.\n", activeTarget)
-				}
+	// Optional dev synchronization if SWAPAUDIT_DEV_SYNC_PATH is configured
+	if syncPath := os.Getenv("SWAPAUDIT_DEV_SYNC_PATH"); syncPath != "" && syncPath != selfPath {
+		if fi, err := os.Stat(syncPath); err == nil && !fi.IsDir() {
+			if copyErr := copyFileAtomic(selfPath, syncPath); copyErr == nil {
+				fmt.Fprintf(out, "Synchronized dev binary at %s.\n", syncPath)
 			}
 		}
 	}
@@ -421,11 +439,13 @@ func Upgrade(currentVersion string, out, errOut io.Writer) int {
 }
 
 func checkWritable(dir string) error {
-	testFile := filepath.Join(dir, fmt.Sprintf(".test_write.%d", os.Getpid()))
-	if err := os.WriteFile(testFile, []byte(""), 0o644); err != nil {
+	tmp, err := os.CreateTemp(dir, ".test_write.*")
+	if err != nil {
 		return err
 	}
-	_ = os.Remove(testFile)
+	name := tmp.Name()
+	tmp.Close()
+	_ = os.Remove(name)
 	return nil
 }
 
@@ -452,10 +472,14 @@ func downloadFile(client *http.Client, url, dest string) error {
 
 func fetchChecksum(client *http.Client, checksumURL, assetName string) string {
 	resp, err := client.Get(checksumURL)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return ""
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
@@ -492,16 +516,24 @@ func copyFileAtomic(src, dest string) error {
 	}
 	defer in.Close()
 
-	tmp := fmt.Sprintf("%s.tmp.%d", dest, os.Getpid())
-	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	destDir := filepath.Dir(dest)
+	out, err := os.CreateTemp(destDir, ".copy.tmp.*")
 	if err != nil {
 		return err
 	}
+	tmp := out.Name()
+	defer os.Remove(tmp)
+
 	if _, err := io.Copy(out, in); err != nil {
 		out.Close()
-		os.Remove(tmp)
 		return err
 	}
-	out.Close()
+	if err := out.Chmod(0o755); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
 	return os.Rename(tmp, dest)
 }

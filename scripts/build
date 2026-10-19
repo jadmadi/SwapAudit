@@ -276,7 +276,7 @@ else
             echo -e "${YELLOW}Warning: Cannot write to install directory ${INSTALL_DIR}. Skipping install.${RESET}" >&2
         else
             target="${INSTALL_DIR}/swapaudit"
-            tmp_target="${target}.tmp.$$"
+            tmp_target="$(mktemp "${INSTALL_DIR}/.swapaudit.tmp.XXXXXX" 2>/dev/null || echo "${target}.tmp.$$")"
             if ! cp "${NATIVE_OUT}" "${tmp_target}" || ! chmod 755 "${tmp_target}" || ! mv -f "${tmp_target}" "${target}"; then
                 rm -f "${tmp_target}"
                 if [[ "$INSTALL_EXPLICIT" == true ]]; then
@@ -287,11 +287,11 @@ else
             else
                 echo -e "${GREEN}✔ Installed:${RESET} ${BOLD}${target}${RESET}"
 
-                # Also synchronize to active go script bin if present and writable (~/scripts/active/go)
-                ACTIVE_GO_BIN="${HOME}/scripts/active/go"
+                # Optional dev synchronization if SWAPAUDIT_DEV_SYNC_PATH or local active go directory is configured
+                ACTIVE_GO_BIN="${SWAPAUDIT_DEV_SYNC_PATH:-${HOME}/scripts/active/go}"
                 if [[ -d "$ACTIVE_GO_BIN" && -w "$ACTIVE_GO_BIN" && "$ACTIVE_GO_BIN" != "$INSTALL_DIR" ]]; then
                     active_target="${ACTIVE_GO_BIN}/swapaudit"
-                    active_tmp="${active_target}.tmp.$$"
+                    active_tmp="$(mktemp "${ACTIVE_GO_BIN}/.swapaudit.tmp.XXXXXX" 2>/dev/null || echo "${active_target}.tmp.$$")"
                     if cp "${NATIVE_OUT}" "${active_tmp}" && chmod 755 "${active_tmp}" && mv -f "${active_tmp}" "${active_target}"; then
                         echo -e "${GREEN}✔ Synchronized active go bin:${RESET} ${BOLD}${active_target}${RESET}"
                     fi

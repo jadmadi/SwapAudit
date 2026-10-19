@@ -51,6 +51,20 @@ func TestPruneTmpTargetsDryRun(t *testing.T) {
 	}
 }
 
+func TestPruneTmpTargetsUnsafeGuards(t *testing.T) {
+	targets := []model.SwapItem{
+		{Path: "", SizeBytes: 100},
+		{Path: "/", SizeBytes: 100},
+		{Path: "/tmp", SizeBytes: 100},
+		{Path: "/var/tmp", SizeBytes: 100},
+		{Path: "relative/path", SizeBytes: 100},
+	}
+	reclaimed := PruneTmpTargets(targets, "Unsafe Targets", "Prompt?", false, true, 40, "")
+	if reclaimed != 0 {
+		t.Errorf("PruneTmpTargets() reclaimed unsafe targets = %d, want 0", reclaimed)
+	}
+}
+
 func TestKillProcessTargetsDryRun(t *testing.T) {
 	targets := []model.SwapItem{
 		{

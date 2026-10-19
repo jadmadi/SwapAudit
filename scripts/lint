@@ -14,7 +14,7 @@ fi
 echo "==> Running go vet..."
 go vet ./...
 
-if which golangci-lint >/dev/null 2>&1; then
+if command -v golangci-lint >/dev/null 2>&1; then
   echo "==> Running golangci-lint..."
   golangci-lint run ./...
 fi

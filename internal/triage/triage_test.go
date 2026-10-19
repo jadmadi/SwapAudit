@@ -16,6 +16,7 @@ func TestCategorizeProcess(t *testing.T) {
 		argv          []string
 		pid           int
 		ppid          int
+		isOrphaned    bool
 		lastActive    time.Duration
 		wantCategory  model.Category
 		wantCleanable bool
@@ -26,6 +27,7 @@ func TestCategorizeProcess(t *testing.T) {
 			argv:          []string{"plasmashell"},
 			pid:           100,
 			ppid:          1,
+			isOrphaned:    false,
 			lastActive:    10 * time.Minute,
 			wantCategory:  model.CatDesktopDaemon,
 			wantCleanable: false,
@@ -36,6 +38,7 @@ func TestCategorizeProcess(t *testing.T) {
 			argv:          []string{"/usr/bin/kwin_wayland"},
 			pid:           101,
 			ppid:          1,
+			isOrphaned:    false,
 			lastActive:    0,
 			wantCategory:  model.CatDesktopDaemon,
 			wantCleanable: false,
@@ -45,17 +48,30 @@ func TestCategorizeProcess(t *testing.T) {
 			comm:          "agy",
 			argv:          []string{"agy"},
 			pid:           102,
-			ppid:          1,
+			ppid:          1000,
+			isOrphaned:    false,
 			lastActive:    15 * time.Minute,
 			wantCategory:  model.CatActiveProcess,
 			wantCleanable: false,
 		},
 		{
-			name:          "dormant agent session exceeding threshold",
+			name:          "orphaned agent session whose parent died",
 			comm:          "agy",
 			argv:          []string{"agy"},
 			pid:           103,
 			ppid:          1,
+			isOrphaned:    true,
+			lastActive:    30 * time.Minute,
+			wantCategory:  model.CatAbandonedAgent,
+			wantCleanable: true,
+		},
+		{
+			name:          "dormant agent session exceeding threshold",
+			comm:          "agy",
+			argv:          []string{"agy"},
+			pid:           104,
+			ppid:          1000,
+			isOrphaned:    false,
 			lastActive:    3 * time.Hour,
 			wantCategory:  model.CatDormantAgent,
 			wantCleanable: true,
@@ -64,8 +80,9 @@ func TestCategorizeProcess(t *testing.T) {
 			name:          "agent session with unknown last active",
 			comm:          "agy",
 			argv:          []string{"agy"},
-			pid:           104,
-			ppid:          1,
+			pid:           105,
+			ppid:          1000,
+			isOrphaned:    false,
 			lastActive:    -1,
 			wantCategory:  model.CatActiveProcess,
 			wantCleanable: false,
@@ -74,18 +91,31 @@ func TestCategorizeProcess(t *testing.T) {
 			name:          "dormant chrome devtools mcp",
 			comm:          "chrome-devtools",
 			argv:          []string{"chrome-devtools-mcp"},
-			pid:           105,
-			ppid:          1,
+			pid:           106,
+			ppid:          1000,
+			isOrphaned:    false,
 			lastActive:    4 * time.Hour,
 			wantCategory:  model.CatDormantAgent,
+			wantCleanable: true,
+		},
+		{
+			name:          "abandoned chrome devtools mcp orphaned",
+			comm:          "chrome-devtools",
+			argv:          []string{"chrome-devtools-mcp"},
+			pid:           107,
+			ppid:          1,
+			isOrphaned:    true,
+			lastActive:    10 * time.Minute,
+			wantCategory:  model.CatAbandonedAgent,
 			wantCleanable: true,
 		},
 		{
 			name:          "agent identified by discrete conversation flag",
 			comm:          "node",
 			argv:          []string{"node", "--conversation", "deadbeef123"},
-			pid:           106,
-			ppid:          1,
+			pid:           108,
+			ppid:          1000,
+			isOrphaned:    false,
 			lastActive:    5 * time.Hour,
 			wantCategory:  model.CatDormantAgent,
 			wantCleanable: true,
@@ -94,8 +124,9 @@ func TestCategorizeProcess(t *testing.T) {
 			name:          "regular shell not agent",
 			comm:          "bash",
 			argv:          []string{"bash"},
-			pid:           107,
+			pid:           109,
 			ppid:          1,
+			isOrphaned:    false,
 			lastActive:    10 * time.Hour,
 			wantCategory:  model.CatActiveProcess,
 			wantCleanable: false,
@@ -104,7 +135,7 @@ func TestCategorizeProcess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cat, cleanable := CategorizeProcess(tt.comm, tt.argv, tt.pid, tt.ppid, tt.lastActive, idleThreshold)
+			cat, cleanable := CategorizeProcess(tt.comm, tt.argv, tt.pid, tt.ppid, tt.isOrphaned, tt.lastActive, idleThreshold)
 			if cat != tt.wantCategory || cleanable != tt.wantCleanable {
 				t.Errorf("CategorizeProcess() = (%v, %v), want (%v, %v)",
 					cat, cleanable, tt.wantCategory, tt.wantCleanable)

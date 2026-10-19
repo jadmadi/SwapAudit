@@ -146,13 +146,17 @@ func ReadCmdlineArgs(pid int) []string {
 	return argv
 }
 
-// ReadCmdline returns a reconstructed command line string from /proc/[pid]/cmdline.
-func ReadCmdline(pid int, fallback string) string {
-	argv := ReadCmdlineArgs(pid)
+// FormatCmdline formats argv tokens or falls back to bracketed comm name.
+func FormatCmdline(argv []string, fallback string) string {
 	if len(argv) == 0 {
 		return fmt.Sprintf("[%s]", fallback)
 	}
 	return strings.Join(argv, " ")
+}
+
+// ReadCmdline returns a reconstructed command line string from /proc/[pid]/cmdline.
+func ReadCmdline(pid int, fallback string) string {
+	return FormatCmdline(ReadCmdlineArgs(pid), fallback)
 }
 
 // ReadStartTicks returns field 22 (starttime) from /proc/[pid]/stat in clock ticks.
@@ -177,16 +181,35 @@ func ReadStartTicks(pid int) int64 {
 	return ticks
 }
 
-// ReadProcessAge calculates the elapsed age of a process from boot time and /proc/[pid]/stat starttime.
-// Note: clock ticks are assumed to be 100 Hz (USER_HZ on standard Linux).
-func ReadProcessAge(pid int, bootTime time.Time) time.Duration {
-	startTicks := ReadStartTicks(pid)
+// CalcProcessAge calculates elapsed age from start ticks and boot time.
+func CalcProcessAge(startTicks int64, bootTime time.Time) time.Duration {
 	if startTicks <= 0 {
 		return 0
 	}
 	startSec := float64(startTicks) / 100.0
 	startTime := bootTime.Add(time.Duration(startSec * float64(time.Second)))
 	return time.Since(startTime)
+}
+
+// ReadProcessAge calculates the elapsed age of a process from boot time and /proc/[pid]/stat starttime.
+// Note: clock ticks are assumed to be 100 Hz (USER_HZ on standard Linux).
+func ReadProcessAge(pid int, bootTime time.Time) time.Duration {
+	return CalcProcessAge(ReadStartTicks(pid), bootTime)
+}
+
+// IsProcessOrphaned determines if a child process has lost its parent.
+// On Linux, deceased parents result in ppid <= 1 (init) or reparenting
+// to the user manager subreaper (systemd).
+func IsProcessOrphaned(ppid int) bool {
+	if ppid <= 1 {
+		return true
+	}
+	statPath := fmt.Sprintf("/proc/%d", ppid)
+	if _, err := os.Stat(statPath); os.IsNotExist(err) {
+		return true
+	}
+	parentComm := ReadComm(ppid)
+	return parentComm == "systemd" || parentComm == "init"
 }
 
 // ReadProcessLastActive parses se.exec_start from /proc/[pid]/sched to determine process idle time.

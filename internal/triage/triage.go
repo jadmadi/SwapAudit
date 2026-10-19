@@ -2,7 +2,6 @@ package triage
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -11,8 +10,8 @@ import (
 )
 
 // CategorizeProcess classifies a process into desktop daemon, agent, or active app.
-// It detects orphaned agent sessions (parent PID deceased) and dormant agent sessions.
-func CategorizeProcess(comm string, argv []string, pid, ppid int, lastActive, idleThreshold time.Duration) (model.Category, bool) {
+// It detects orphaned agent sessions (parent deceased or reparented to init/subreaper) and dormant agent sessions.
+func CategorizeProcess(comm string, argv []string, pid, ppid int, isOrphaned bool, lastActive, idleThreshold time.Duration) (model.Category, bool) {
 	var binName string
 	if len(argv) > 0 {
 		binName = filepath.Base(argv[0])
@@ -42,10 +41,8 @@ func CategorizeProcess(comm string, argv []string, pid, ppid int, lastActive, id
 	}
 
 	if isAgent {
-		if ppid > 1 {
-			if _, err := os.Stat(fmt.Sprintf("/proc/%d", ppid)); os.IsNotExist(err) {
-				return model.CatAbandonedAgent, true
-			}
+		if isOrphaned {
+			return model.CatAbandonedAgent, true
 		}
 		if lastActive >= 0 && lastActive > idleThreshold {
 			return model.CatDormantAgent, true

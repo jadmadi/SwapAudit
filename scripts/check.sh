@@ -99,8 +99,8 @@ cd "${ROOT_DIR}"
 # -----------------------------------------------------------------------------
 echo -e "${BOLD}1. Running Diff Sentry (secrets, debug prints, conflict markers)...${RESET}"
 
-STAGED_DIFF=$(git diff --cached 2>/dev/null || true)
-UNSTAGED_DIFF=$(git diff 2>/dev/null || true)
+STAGED_DIFF=$(git diff --cached -- . ':!scripts/check.sh' 2>/dev/null || true)
+UNSTAGED_DIFF=$(git diff -- . ':!scripts/check.sh' 2>/dev/null || true)
 COMBINED_DIFF="${STAGED_DIFF}${UNSTAGED_DIFF}"
 
 if [[ -n "${COMBINED_DIFF}" ]]; then
@@ -111,8 +111,8 @@ if [[ -n "${COMBINED_DIFF}" ]]; then
     fi
 
     # Raw secret tokens check
-    if echo "${COMBINED_DIFF}" | grep -E -i '^\+.*(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{82}|AKIA[0-9A-Z]{16})' >/dev/null 2>&1; then
-        echo -e "   ${RED}✖ Error: Potential raw API key or token found in diff.${RESET}"
+    if echo "${COMBINED_DIFF}" | grep -E -i '^\+.*(ghp_[A-Za-z0-9_]{36}|github_pat_[A-Za-z0-9_]{82}|AKIA[0-9A-Z]{16}|BEGIN.*PRIVATE KEY|sk-[a-zA-Z0-9]{20,}|sk-ant-[a-zA-Z0-9]{20,})' >/dev/null 2>&1; then
+        echo -e "   ${RED}✖ Error: Potential raw API key, token, or private key found in diff.${RESET}"
         exit 1
     fi
 fi
