@@ -451,5 +451,6 @@ func PrintQuickCommands() {
 	cmd("--clean-tmp", "Clean all stale /tmp caches (untouched + abandoned)")
 	cmd("--clean-all", "Run all cleanup actions (untouched + abandoned + dormant + orphaned)")
 	cmd("--dry-run", "Preview cleanup actions without touching files or processes")
+	cmd("upgrade", "Upgrade swapaudit to the latest released version")
 	fmt.Println()
 }

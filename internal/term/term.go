@@ -507,3 +507,39 @@ func PrintBoxHeader(title string) {
 	fmt.Println(midLine)
 	fmt.Println(botLine)
 }
+
+// PrintUpdateNotice prints an advisory box notifying that a newer release is available.
+func PrintUpdateNotice(current, latest string) {
+	w := termWidth
+	tl := GlyphBoxTopLeft()
+	tr := GlyphBoxTopRight()
+	bl := GlyphBoxBottomLeft()
+	br := GlyphBoxBottomRight()
+	horiz := GlyphBoxHoriz()
+	vert := GlyphBoxVert()
+
+	topLine := Cyan(tl + strings.Repeat(horiz, w-2) + tr)
+	botLine := Cyan(bl + strings.Repeat(horiz, w-2) + br)
+
+	innerWidth := w - 4
+	line1 := fmt.Sprintf("A new release of swapaudit is available: %s -> %s", current, latest)
+	line2 := "Run 'swapaudit upgrade' to update to the latest version."
+
+	pad1 := innerWidth - StrWidth(line1)
+	if pad1 < 0 {
+		pad1 = 0
+	}
+	pad2 := innerWidth - StrWidth(line2)
+	if pad2 < 0 {
+		pad2 = 0
+	}
+
+	mid1 := fmt.Sprintf("%s %s%s %s", Cyan(vert), Yellow(line1), strings.Repeat(" ", pad1), Cyan(vert))
+	mid2 := fmt.Sprintf("%s %s%s %s", Cyan(vert), Bold(line2), strings.Repeat(" ", pad2), Cyan(vert))
+
+	fmt.Println()
+	fmt.Println(topLine)
+	fmt.Println(mid1)
+	fmt.Println(mid2)
+	fmt.Println(botLine)
+}

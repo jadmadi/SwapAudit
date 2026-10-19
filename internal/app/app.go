@@ -18,6 +18,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/proc"
 	"github.com/jadmadi/swapaudit/internal/term"
 	"github.com/jadmadi/swapaudit/internal/triage"
+	"github.com/jadmadi/swapaudit/internal/updater"
 	"github.com/jadmadi/swapaudit/internal/version"
 )
 
@@ -112,6 +113,19 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 
 // Run parses CLI flags and executes the swapaudit command workflow.
 func Run(args []string) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "upgrade", "--upgrade":
+			if len(args) > 1 && (args[1] == "-h" || args[1] == "--help" || args[1] == "help") {
+				fmt.Println("Usage: swapaudit upgrade")
+				fmt.Println()
+				fmt.Println("Check GitHub for the latest release and atomically upgrade the swapaudit binary.")
+				return 0
+			}
+			return updater.Upgrade(version.Version, os.Stdout, os.Stderr)
+		}
+	}
+
 	fs := flag.NewFlagSet("swapaudit", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 
@@ -132,6 +146,7 @@ func Run(args []string) int {
 		noColor        = fs.Bool("no-color", false, "Disable colored output")
 		ascii          = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
 		showVersion    = fs.Bool("version", false, "Print swapaudit version and exit")
+		noUpdateCheck  = fs.Bool("no-update-check", false, "Disable daily release update check")
 	)
 	var customTmpPatterns stringSliceFlag
 	fs.Var(&customTmpPatterns, "tmp-pattern", "Additional /tmp pattern to identify artifacts (repeatable)")
@@ -146,6 +161,15 @@ func Run(args []string) int {
 	if *showVersion {
 		fmt.Println(version.String())
 		return 0
+	}
+
+	var updateCh chan *updater.UpdateInfo
+	if !*noUpdateCheck {
+		updateCh = make(chan *updater.UpdateInfo, 1)
+		go func() {
+			info, _ := updater.CheckDailyUpdate(version.Version)
+			updateCh <- info
+		}()
 	}
 
 	term.InitTerminal(*noColor, *ascii)
@@ -183,6 +207,16 @@ func Run(args []string) int {
 		cleaner.ExecuteCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
 	} else {
 		PrintQuickCommands()
+	}
+
+	if updateCh != nil {
+		select {
+		case info := <-updateCh:
+			if info != nil {
+				term.PrintUpdateNotice(info.Current, info.Latest)
+			}
+		case <-time.After(150 * time.Millisecond):
+		}
 	}
 
 	return 0

@@ -261,3 +261,32 @@ func TestPrintBoxHeader(t *testing.T) {
 		}
 	}
 }
+
+func TestPrintUpdateNotice(t *testing.T) {
+	SetTermWidth(80)
+	SetAsciiMode(true)
+	SetColorEnabled(false)
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	PrintUpdateNotice("v0.1.0", "v0.2.0")
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if !strings.Contains(output, "A new release of swapaudit is available") {
+		t.Errorf("expected update notice message, got %q", output)
+	}
+	if !strings.Contains(output, "swapaudit upgrade") {
+		t.Errorf("expected upgrade instruction, got %q", output)
+	}
+}

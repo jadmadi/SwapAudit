@@ -125,3 +125,49 @@ func TestStringSliceFlag(t *testing.T) {
 		t.Errorf("String() = %q, want %q", s.String(), "first, second")
 	}
 }
+
+func TestRunUpgradeHelp(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"upgrade", "--help"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run(upgrade --help) exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "Usage: swapaudit upgrade") {
+		t.Errorf("Run(upgrade --help) missing usage line: %q", output)
+	}
+}
+
+func TestRunNoUpdateCheck(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--no-update-check", "--dry-run", "--limit", "1", "--no-color", "--ascii"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+
+	if code != 0 {
+		t.Errorf("Run(--no-update-check) exit code = %d, want 0", code)
+	}
+}
