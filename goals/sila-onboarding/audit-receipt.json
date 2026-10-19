@@ -1,0 +1,18 @@
+{
+  "version": "sila/audit-receipt/v1",
+  "goal_slug": "sila-onboarding",
+  "commit_sha": "f4f1f9339befb56ef5400c6db09a3f354e7109a8",
+  "spec_hash": "528227e7eb8f26fbae968cb1a8a132e1275683c69b904cf46536255f6a73152b",
+  "sandbox_nonce": "4df71715d908fcdf",
+  "candidate_selection": "A",
+  "blindfold_verified": true,
+  "canary_passed": true,
+  "ccdsi_score": 0.8333333333333334,
+  "req_coverage": 1,
+  "probes_executed": 6,
+  "probes_passed": 6,
+  "probe_manifest_hash": "9c3c599ac1f291d279fcfca8ab7da3daf6fe19403a9d7f921257d284d0acd7c7",
+  "auditor_pub_key": "5r6B7wHvYE3qk3Y0tedHVJOrRr16QvxJUqYu98JaKjM=",
+  "auditor_signature": "kNnzOQMNt0TRu5p/gfavk2i/FExg2Pwm9sWnKuIfZ4mHaXzGU/92k0tDr2P7rE1ht4euSOaSNekRi7sMc0yxBQ==",
+  "certified_at": "2026-10-19T07:51:33Z"
+}
