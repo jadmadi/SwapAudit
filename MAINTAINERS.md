@@ -18,6 +18,8 @@ swapaudit operates under a **Written Solo Authority** model led by Jad Madi. Gov
 - Final tiebreaker for technical proposals and pull requests.
 - Security vulnerability coordination and CVE disclosure management.
 
+**Security reports**: [GitHub Private Vulnerability Reporting](https://github.com/jadmadi/SwapAudit/security/advisories/new) is the primary channel; `contact@jadmadi.net` is the fallback. See [SECURITY.md](SECURITY.md).
+
 ---
 
 ## 2. Active Maintainers & Reviewers

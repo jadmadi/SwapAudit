@@ -32,4 +32,6 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to `contact@jadmadi.net` or through the repository's report form. Do not use a public issue for a conduct report.
+
+Reports are reviewed confidentially. We aim to acknowledge receipt within 48 hours. Retaliation against a reporter is not tolerated.
