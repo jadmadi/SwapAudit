@@ -305,6 +305,20 @@ func TestCheckForUpdateTimeout(t *testing.T) {
 	}
 }
 
+func TestAssetNameFor(t *testing.T) {
+	tests := map[string]string{
+		"amd64":   "swapaudit-linux-amd64",
+		"arm64":   "swapaudit-linux-arm64",
+		"arm":     "swapaudit-linux-armv7",
+		"riscv64": "swapaudit-linux-riscv64",
+	}
+	for arch, want := range tests {
+		if got := assetNameFor(arch); got != want {
+			t.Errorf("assetNameFor(%q) = %q, want %q", arch, got, want)
+		}
+	}
+}
+
 func TestCheckForUpdateCommitHashVersion(t *testing.T) {
 	if !IsNewer("1a8479e", "v0.1.0") {
 		t.Error("IsNewer(commit hash, release) = false, want true")

@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-10-19
 
+### Release
+- First tagged release in the private repository.
+- Four Linux assets: `swapaudit-linux-amd64`, `swapaudit-linux-arm64`, `swapaudit-linux-armv7`, `swapaudit-linux-riscv64`.
+- SHA256 checksums (`checksums.txt`) and cosign keyless signatures (`checksums.txt.sig`, `checksums.txt.pem`).
+- ARMv7 asset name fixed to match the updater contract.
+- Uncompressed binaries with a reproducible amd64 build.
+
 ### Added
 - Modular layered Go architecture with `cmd/swapaudit` and clean `internal/` packages.
 - Accurate kernel memory auditing parsing `/proc/meminfo`, `/proc/[pid]/status`, and `/proc/[pid]/sched`.

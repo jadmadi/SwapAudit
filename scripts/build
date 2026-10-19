@@ -149,7 +149,11 @@ else
 fi
 
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "none")"
-DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then
+    DATE="$(date -u -d "@${SOURCE_DATE_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ")"
+else
+    DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+fi
 
 LDFLAGS="-X ${VERSION_PKG}.Version=${VERSION} \
 -X ${VERSION_PKG}.Commit=${COMMIT} \
