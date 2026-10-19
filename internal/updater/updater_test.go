@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -240,5 +241,43 @@ func TestCheckDailyUpdateContextCancel(t *testing.T) {
 	_, err := CheckDailyUpdateWithContext(ctx, "dev")
 	if err == nil {
 		// Either returned early because env or failed with context canceled
+	}
+}
+
+func TestCacheFilePathUIDFallback(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", "")
+
+	oldUserHomeDir := userHomeDir
+	defer func() { userHomeDir = oldUserHomeDir }()
+	userHomeDir = func() (string, error) {
+		return "", os.ErrNotExist
+	}
+
+	expected := filepath.Join(os.TempDir(), fmt.Sprintf("swapaudit-%d-update-check.json", os.Getuid()))
+	actual := CacheFilePath()
+	if actual != expected {
+		t.Errorf("CacheFilePath() fallback = %q, expected %q", actual, expected)
+	}
+}
+
+func TestDownloadFileLimitReader(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		chunk := make([]byte, 1024*1024) // 1MB chunk
+		for i := 0; i < 52; i++ {
+			if _, err := w.Write(chunk); err != nil {
+				return
+			}
+		}
+	}))
+	defer ts.Close()
+
+	dest := filepath.Join(t.TempDir(), "oversized_bin")
+	err := downloadFile(ts.Client(), ts.URL, dest)
+	if err == nil {
+		t.Fatal("expected error downloading stream exceeding 50MB limit, got nil")
+	}
+	if !strings.Contains(err.Error(), "download size exceeded limit") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }

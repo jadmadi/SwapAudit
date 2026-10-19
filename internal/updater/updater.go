@@ -29,6 +29,12 @@ const (
 
 	// RequestTimeout is the maximum duration to wait for remote release checks.
 	RequestTimeout = 2 * time.Second
+
+	// maxBinaryDownloadSize is the maximum size allowed when downloading release binaries (50MB).
+	maxBinaryDownloadSize = 50 * 1024 * 1024
+
+	// maxChecksumDownloadSize is the maximum size allowed when fetching checksums.txt (1MB).
+	maxChecksumDownloadSize = 1 * 1024 * 1024
 )
 
 // State holds the persistent timestamp and version of the last release check.
@@ -45,15 +51,17 @@ type UpdateInfo struct {
 	ReleaseURL string
 }
 
+var userHomeDir = os.UserHomeDir
+
 // CacheFilePath returns the path to the persistent update check state file.
 func CacheFilePath() string {
 	if dir := os.Getenv("XDG_CACHE_HOME"); dir != "" {
 		return filepath.Join(dir, "swapaudit", "update_check.json")
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
+	if home, err := userHomeDir(); err == nil && home != "" {
 		return filepath.Join(home, ".cache", "swapaudit", "update_check.json")
 	}
-	return filepath.Join(os.TempDir(), "swapaudit-update-check.json")
+	return filepath.Join(os.TempDir(), fmt.Sprintf("swapaudit-%d-update-check.json", os.Getuid()))
 }
 
 // LoadState reads the update state from the specified path.
@@ -496,8 +504,15 @@ func downloadFile(client *http.Client, url, dest string) error {
 	}
 	defer out.Close()
 
-	_, err = io.Copy(out, resp.Body)
-	return err
+	limited := io.LimitReader(resp.Body, maxBinaryDownloadSize+1)
+	n, err := io.Copy(out, limited)
+	if err != nil {
+		return err
+	}
+	if n > maxBinaryDownloadSize {
+		return fmt.Errorf("download size exceeded limit of %d bytes", maxBinaryDownloadSize)
+	}
+	return nil
 }
 
 func fetchChecksum(client *http.Client, checksumURL, assetName string) string {
@@ -511,7 +526,7 @@ func fetchChecksum(client *http.Client, checksumURL, assetName string) string {
 		return ""
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
+	scanner := bufio.NewScanner(io.LimitReader(resp.Body, maxChecksumDownloadSize))
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		fields := strings.Fields(line)
