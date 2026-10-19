@@ -29,18 +29,9 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 ## Summary
 - **Total Goals**: 5
 - 🟡 **Ready to Execute (Pending)**: 2 (2 independent ⚡, 0 unblocked 🔗)
-- 🔵 **In Progress (Claimed)**: 1
-- 🟢 **Implemented**: 2 (2 verified 📜, 0 unverified)
+- 🟢 **Implemented**: 3 (3 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 2 immediate (Tier 1), 2 roadmap (Tier 2), 1 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
 - 📋 **Execution Tasks Progress**: 20/20 completed (100%)
-
----
-
-## 🔵 In Progress (Claimed Goals)
-
-| Goal Package | Tier | Mode | Agent | Status & Note | Started |
-| :--- | :---: | :---: | :--- | :--- | :--- |
-| [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `🎯 Immediate` | `⚡ Indep` | `@antigravity` | Implementing synchronous cache loading, cancellation context, and goroutine cleanup for update check | 11m0s ago |
 
 ---
 
@@ -59,3 +50,4 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | :--- | :---: | :--- | :---: | :--- | :--- |
 | [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `3854d3b` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `f4f1f93` |
+| [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `602fa2f` |

@@ -1,5 +1,12 @@
 # Goal: Harden Background Update Check Lifecycle and Goroutine Hygiene
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_update-check-lifecycle_1792402797`
+
+
 ## Goal Description
 Refactor release update checks so cached state is read synchronously from disk on startup, remote checks run with bounded lifecycle and cancellation context, avoiding orphaned goroutines or truncated state file writes when Run() exits.
 
