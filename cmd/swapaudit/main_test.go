@@ -38,7 +38,7 @@ func runCLI(t *testing.T, args ...string) (string, string, int) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Env = append(os.Environ(), "SWAPAUDIT_NO_UPDATE_CHECK=1")
+	cmd.Env = os.Environ()
 
 	err := cmd.Run()
 	exitCode := 0

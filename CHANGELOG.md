@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `--all-users` opt-in for signaling processes owned by another UID.
 - `--include-orphaned` opt-in for including orphaned-agent cleanup with `--clean-all`.
+- `--check-updates` and `SWAPAUDIT_CHECK_UPDATES=1` opt-in for one explicit release check.
+- `PRIVACY.md` and `docs/decisions/0001-update-check-policy.md`.
 - UID, tty, and cgroup evidence parsing plus a fail-closed orphan classifier.
 - One-line cleanup summary with counts and skip reasons.
 - `docs/safety.md` operator safety contract and manual verification protocol.
@@ -22,12 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `--clean-all` no longer includes orphaned cleanup; orphan cleanup is always explicit.
 - Dormant-cleanup prompt now warns that `SIGTERM` may lose unsaved in-memory state instead of claiming conversations are preserved.
+- Default audit is network-silent; update checks are opt-in.
+- Removed the 150 ms background update-check race and the automatic 24-hour cadence.
+- Removed `--no-update-check` and `SWAPAUDIT_NO_UPDATE_CHECK`; the default is silent.
 - Enforced fail-closed temporary file creation in build script.
 
 ### Fixed
 - False-positive orphan classification for systemd-managed agents.
 - Cross-user process signaling when running as root without `--all-users`.
 - Unverified conversation-preservation claim in the destructive cleanup prompt.
+- Update state now preserves the last known version and URL after a failed explicit check.
 
 ## [0.1.0] - 2026-10-19
 

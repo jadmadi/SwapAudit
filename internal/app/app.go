@@ -24,6 +24,8 @@ import (
 	"github.com/jadmadi/swapaudit/internal/version"
 )
 
+var checkForUpdate = updater.CheckForUpdate
+
 // stringSliceFlag implements flag.Value to allow repeatable string flags.
 type stringSliceFlag []string
 
@@ -174,7 +176,7 @@ func Run(args []string) int {
 		noColor         = fs.Bool("no-color", false, "Disable colored output")
 		ascii           = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
 		showVersion     = fs.Bool("version", false, "Print swapaudit version and exit")
-		noUpdateCheck   = fs.Bool("no-update-check", false, "Disable daily release update check")
+		checkUpdates    = fs.Bool("check-updates", false, "Check GitHub for a newer release (one network request; see PRIVACY.md)")
 	)
 	var customTmpPatterns stringSliceFlag
 	fs.Var(&customTmpPatterns, "tmp-pattern", "Additional /tmp pattern to identify artifacts (repeatable)")
@@ -195,41 +197,10 @@ func Run(args []string) int {
 		return 0
 	}
 
-	var cachedNotice *updater.UpdateInfo
-	var updateCancel context.CancelFunc
-	var updateDone chan struct{}
-	var updateNotice *updater.UpdateInfo
-
-	if !*noUpdateCheck && os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") == "" && os.Getenv("CI") == "" {
-		if info := updater.GetCachedUpdate(version.Version); info != nil {
-			cachedNotice = info
-		} else {
-			state, err := updater.LoadState(updater.CacheFilePath())
-			checkDue := err != nil || state == nil || time.Since(state.LastChecked) >= updater.CheckInterval
-			if checkDue {
-				var ctx context.Context
-				ctx, updateCancel = context.WithTimeout(context.Background(), 2*time.Second)
-				defer updateCancel()
-				updateDone = make(chan struct{})
-				go func() {
-					defer close(updateDone)
-					info, _ := updater.CheckDailyUpdateWithContext(ctx, version.Version)
-					if info != nil {
-						updateNotice = info
-					}
-				}()
-			}
-		}
-	}
-
 	term.InitTerminal(*noColor, *ascii)
 
 	if *sortBy != "size" && *sortBy != "age" {
 		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size' or 'age')\n", *sortBy)
-		if updateCancel != nil {
-			updateCancel()
-			<-updateDone
-		}
 		return 2
 	}
 
@@ -265,19 +236,14 @@ func Run(args []string) int {
 		PrintQuickCommands()
 	}
 
-	if cachedNotice != nil {
-		term.PrintUpdateNotice(cachedNotice.Current, cachedNotice.Latest)
-	} else if updateDone != nil {
-		select {
-		case <-updateDone:
-			if updateNotice != nil {
-				term.PrintUpdateNotice(updateNotice.Current, updateNotice.Latest)
-			}
-		case <-time.After(150 * time.Millisecond):
-			if updateCancel != nil {
-				updateCancel()
-			}
-			<-updateDone
+	if *checkUpdates || os.Getenv("SWAPAUDIT_CHECK_UPDATES") == "1" {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		info, err := checkForUpdate(ctx, version.Version)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: update check failed: %v\n", err)
+		} else if info != nil {
+			term.PrintUpdateNotice(info.Current, info.Latest)
 		}
 	}
 

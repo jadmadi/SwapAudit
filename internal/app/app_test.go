@@ -4,12 +4,11 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jadmadi/swapaudit/internal/cleaner"
 	"github.com/jadmadi/swapaudit/internal/updater"
@@ -156,42 +155,17 @@ func TestRunUpgradeHelp(t *testing.T) {
 	}
 }
 
-func TestRunNoUpdateCheck(t *testing.T) {
-	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe() failed: %v", err)
+func TestRunDefaultMakesNoNetworkRequest(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := false
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called = true
+		return nil, nil
 	}
-	os.Stdout = w
+	defer func() { checkForUpdate = oldCheck }()
 
-	code := Run([]string{"--no-update-check", "--dry-run", "--limit", "1", "--no-color", "--ascii"})
-
-	w.Close()
-	os.Stdout = oldStdout
-
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-
-	if code != 0 {
-		t.Errorf("Run(--no-update-check) exit code = %d, want 0", code)
-	}
-}
-
-func TestRunCachedUpdateNotice(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", tmpDir)
-	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
-	t.Setenv("CI", "")
-
-	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
-	state := &updater.State{
-		LastChecked:   time.Now(),
-		LatestVersion: "v99.0.0",
-		ReleaseURL:    "https://github.com/jadmadi/swapaudit/releases/tag/v99.0.0",
-	}
-	if err := updater.SaveState(statePath, state); err != nil {
-		t.Fatalf("SaveState failed: %v", err)
-	}
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("SWAPAUDIT_CHECK_UPDATES", "")
 
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
@@ -207,13 +181,135 @@ func TestRunCachedUpdateNotice(t *testing.T) {
 
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if called {
+		t.Error("default run must not perform an update check")
+	}
+}
+
+func TestRunCheckUpdatesFlag(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := 0
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called++
+		return &updater.UpdateInfo{Current: current, Latest: "v99.0.0"}, nil
+	}
+	defer func() { checkForUpdate = oldCheck }()
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("SWAPAUDIT_CHECK_UPDATES", "")
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--check-updates", "--dry-run", "--limit", "1", "--no-color", "--ascii"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
 		t.Errorf("Run() exit code = %d, want 0", code)
 	}
+	if called != 1 {
+		t.Errorf("checkForUpdate calls = %d, want 1", called)
+	}
 	if !strings.Contains(output, "A new release of swapaudit is available") {
-		t.Errorf("expected update notice for cached newer version, got: %q", output)
+		t.Errorf("expected update notice, got: %q", output)
+	}
+}
+
+func TestRunCheckUpdatesEnv(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := 0
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called++
+		return &updater.UpdateInfo{Current: current, Latest: "v99.0.0"}, nil
+	}
+	defer func() { checkForUpdate = oldCheck }()
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("SWAPAUDIT_CHECK_UPDATES", "1")
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--dry-run", "--limit", "1", "--no-color", "--ascii"})
+
+	w.Close()
+	os.Stdout = oldStdout
+	_, _ = io.Copy(io.Discard, r)
+
+	if code != 0 {
+		t.Errorf("Run() exit code = %d, want 0", code)
+	}
+	if called != 1 {
+		t.Errorf("checkForUpdate calls = %d, want 1", called)
+	}
+}
+
+func TestRunVersionSkipsUpdateCheck(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := false
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called = true
+		return nil, nil
+	}
+	defer func() { checkForUpdate = oldCheck }()
+
+	if code := Run([]string{"--version"}); code != 0 {
+		t.Errorf("Run(--version) exit code = %d, want 0", code)
+	}
+	if called {
+		t.Error("--version must not perform an update check")
+	}
+}
+
+func TestRunUpgradeHelpSkipsUpdateCheck(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := false
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called = true
+		return nil, nil
+	}
+	defer func() { checkForUpdate = oldCheck }()
+
+	if code := Run([]string{"upgrade", "--help"}); code != 0 {
+		t.Errorf("Run(upgrade --help) exit code = %d, want 0", code)
+	}
+	if called {
+		t.Error("upgrade --help must not perform an update check")
+	}
+}
+
+func TestRunInvalidSortSkipsUpdateCheck(t *testing.T) {
+	oldCheck := checkForUpdate
+	called := false
+	checkForUpdate = func(ctx context.Context, current string) (*updater.UpdateInfo, error) {
+		called = true
+		return nil, nil
+	}
+	defer func() { checkForUpdate = oldCheck }()
+
+	if code := Run([]string{"--sort", "invalid", "--check-updates"}); code != 2 {
+		t.Errorf("Run(invalid sort) exit code = %d, want 2", code)
+	}
+	if called {
+		t.Error("invalid sort must be rejected before an update check")
 	}
 }
 
@@ -254,7 +350,7 @@ func TestRunCleanAllExcludesOrphanGroup(t *testing.T) {
 	}
 	os.Stdout = w
 
-	code := Run([]string{"--dry-run", "--clean-all", "--no-update-check", "--no-color", "--ascii", "--limit", "1"})
+	code := Run([]string{"--dry-run", "--clean-all", "--no-color", "--ascii", "--limit", "1"})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -279,7 +375,7 @@ func TestRunCleanAllIncludeOrphaned(t *testing.T) {
 	}
 	os.Stdout = w
 
-	code := Run([]string{"--dry-run", "--clean-all", "--include-orphaned", "--no-update-check", "--no-color", "--ascii", "--limit", "1"})
+	code := Run([]string{"--dry-run", "--clean-all", "--include-orphaned", "--no-color", "--ascii", "--limit", "1"})
 
 	w.Close()
 	os.Stdout = oldStdout

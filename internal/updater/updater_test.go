@@ -3,6 +3,7 @@
 package updater
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -103,6 +105,15 @@ func TestStateSaveAndLoad(t *testing.T) {
 	}
 }
 
+func setGitHubBases(t *testing.T, api, web string) {
+	t.Helper()
+	oldAPI, oldWeb := githubAPIBase, githubWebBase
+	githubAPIBase, githubWebBase = api, web
+	t.Cleanup(func() {
+		githubAPIBase, githubWebBase = oldAPI, oldWeb
+	})
+}
+
 func TestFetchLatestReleaseAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/repos/test/repo/releases/latest" {
@@ -114,16 +125,16 @@ func TestFetchLatestReleaseAPI(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	// Direct test of json decoding flow using the test server client
-	client := ts.Client()
-	resp, err := client.Get(ts.URL + "/repos/test/repo/releases/latest")
+	setGitHubBases(t, ts.URL, ts.URL)
+	latest, releaseURL, err := FetchLatestReleaseContext(context.Background(), "test/repo", ts.Client())
 	if err != nil {
-		t.Fatalf("Failed to GET mock release: %v", err)
+		t.Fatalf("FetchLatestReleaseContext() error = %v", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected 200, got %d", resp.StatusCode)
+	if latest != "v0.2.0" {
+		t.Errorf("latest = %q, want v0.2.0", latest)
+	}
+	if !strings.Contains(releaseURL, "/tag/v0.2.0") {
+		t.Errorf("releaseURL = %q, want tag URL", releaseURL)
 	}
 }
 
@@ -187,61 +198,234 @@ func TestCopyFileAtomic(t *testing.T) {
 	}
 }
 
-func TestGetCachedUpdate(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", tmpDir)
-	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
-	t.Setenv("CI", "")
+func TestCheckForUpdateSuccess(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/repos/test/repo/releases/latest" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tag_name": "v0.2.0", "html_url": "https://github.com/test/repo/releases/tag/v0.2.0"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer ts.Close()
 
-	// 1. When no state exists -> nil
-	if info := GetCachedUpdate("v0.1.0"); info != nil {
-		t.Errorf("expected nil when no cache exists, got %v", info)
-	}
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	// 2. When recent state exists with newer version -> UpdateInfo
-	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
-	state := &State{
-		LastChecked:   time.Now(),
-		LatestVersion: "v0.2.0",
-		ReleaseURL:    "https://github.com/jadmadi/swapaudit/releases/tag/v0.2.0",
+	info, err := CheckForUpdate(context.Background(), "v0.1.0")
+	if err != nil {
+		t.Fatalf("CheckForUpdate() error = %v", err)
 	}
-	if err := SaveState(statePath, state); err != nil {
-		t.Fatalf("SaveState failed: %v", err)
+	if info == nil || info.Latest != "v0.2.0" {
+		t.Fatalf("CheckForUpdate() = %+v, want latest v0.2.0", info)
 	}
-
-	info := GetCachedUpdate("v0.1.0")
-	if info == nil {
-		t.Fatalf("expected UpdateInfo for newer version, got nil")
+	state, err := LoadState(CacheFilePath())
+	if err != nil {
+		t.Fatalf("LoadState() error = %v", err)
 	}
-	if info.Latest != "v0.2.0" {
-		t.Errorf("info.Latest = %q, want v0.2.0", info.Latest)
-	}
-
-	// 3. When current version matches latest -> nil
-	if currentInfo := GetCachedUpdate("v0.2.0"); currentInfo != nil {
-		t.Errorf("expected nil when current matches latest, got %v", currentInfo)
-	}
-
-	// 4. When state is older than 24 hours -> nil
-	staleState := &State{
-		LastChecked:   time.Now().Add(-25 * time.Hour),
-		LatestVersion: "v0.3.0",
-	}
-	if err := SaveState(statePath, staleState); err != nil {
-		t.Fatalf("SaveState failed: %v", err)
-	}
-	if staleInfo := GetCachedUpdate("v0.1.0"); staleInfo != nil {
-		t.Errorf("expected nil for stale cache (>24h), got %v", staleInfo)
+	if state.LatestVersion != "v0.2.0" {
+		t.Errorf("state.LatestVersion = %q, want v0.2.0", state.LatestVersion)
 	}
 }
 
-func TestCheckDailyUpdateContextCancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+func TestCheckForUpdateNoUpdate(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"tag_name": "v0.1.0", "html_url": "https://github.com/test/repo/releases/tag/v0.1.0"}`))
+	}))
+	defer ts.Close()
 
-	_, err := CheckDailyUpdateWithContext(ctx, "dev")
-	if err != nil && !errors.Is(err, context.Canceled) {
-		t.Fatalf("unexpected error: %v", err)
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	info, err := CheckForUpdate(context.Background(), "v0.1.0")
+	if err != nil {
+		t.Fatalf("CheckForUpdate() error = %v", err)
+	}
+	if info != nil {
+		t.Errorf("CheckForUpdate() = %+v, want nil for current version", info)
+	}
+}
+
+func TestCheckForUpdateFailurePreservesState(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", tmpDir)
+
+	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
+	if err := SaveState(statePath, &State{
+		LastChecked:   time.Now().Add(-time.Hour),
+		LatestVersion: "v0.3.0",
+		ReleaseURL:    "https://github.com/test/repo/releases/tag/v0.3.0",
+	}); err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unavailable", http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+
+	if _, err := CheckForUpdate(context.Background(), "v0.1.0"); err == nil {
+		t.Fatal("CheckForUpdate() error = nil, want failure")
+	}
+
+	state, err := LoadState(statePath)
+	if err != nil {
+		t.Fatalf("LoadState() error = %v", err)
+	}
+	if state.LatestVersion != "v0.3.0" {
+		t.Errorf("state.LatestVersion = %q, want preserved v0.3.0", state.LatestVersion)
+	}
+}
+
+func TestCheckForUpdateTimeout(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(300 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"tag_name": "v0.2.0"}`))
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	_, err := CheckForUpdate(ctx, "v0.1.0")
+	if err == nil {
+		t.Fatal("CheckForUpdate() error = nil, want timeout")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) && !strings.Contains(err.Error(), "context deadline exceeded") {
+		t.Errorf("CheckForUpdate() error = %v, want deadline exceeded", err)
+	}
+}
+
+func TestCheckForUpdateCommitHashVersion(t *testing.T) {
+	if !IsNewer("1a8479e", "v0.1.0") {
+		t.Error("IsNewer(commit hash, release) = false, want true")
+	}
+}
+
+func TestFetchLatestReleaseWrapper(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"tag_name": "v0.2.0", "html_url": "https://github.com/test/repo/releases/tag/v0.2.0"}`))
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	latest, _, err := FetchLatestRelease("test/repo", ts.Client())
+	if err != nil {
+		t.Fatalf("FetchLatestRelease() error = %v", err)
+	}
+	if latest != "v0.2.0" {
+		t.Errorf("latest = %q, want v0.2.0", latest)
+	}
+}
+
+func TestCheckWritable(t *testing.T) {
+	if err := checkWritable(t.TempDir()); err != nil {
+		t.Errorf("checkWritable(writable dir) error = %v", err)
+	}
+	if err := checkWritable(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Error("checkWritable(missing dir) error = nil, want error")
+	}
+}
+
+func TestUpgradeEndToEnd(t *testing.T) {
+	arch := runtime.GOARCH
+	if arch == "arm" {
+		arch = "armv7"
+	}
+	assetName := "swapaudit-linux-" + arch
+	binaryContent := []byte("new release binary")
+	sum := sha256.Sum256(binaryContent)
+	checksum := hex.EncodeToString(sum[:])
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/test/repo/releases/latest":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tag_name": "v0.2.0", "html_url": "https://github.com/test/repo/releases/tag/v0.2.0"}`))
+		case "/test/repo/releases/download/v0.2.0/" + assetName:
+			_, _ = w.Write(binaryContent)
+		case "/test/repo/releases/download/v0.2.0/checksums.txt":
+			_, _ = w.Write([]byte(checksum + "  " + assetName + "\n"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("SWAPAUDIT_DEV_SYNC_PATH", "")
+
+	targetDir := t.TempDir()
+	target := filepath.Join(targetDir, "swapaudit")
+	if err := os.WriteFile(target, []byte("old binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile target failed: %v", err)
+	}
+	oldExecutable := executablePath
+	executablePath = func() (string, error) { return target, nil }
+	defer func() { executablePath = oldExecutable }()
+
+	var out, errOut bytes.Buffer
+	code := Upgrade("v0.1.0", &out, &errOut)
+	if code != 0 {
+		t.Fatalf("Upgrade() = %d, want 0; stderr=%s", code, errOut.String())
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile target failed: %v", err)
+	}
+	if string(got) != string(binaryContent) {
+		t.Errorf("target content = %q, want %q", got, binaryContent)
+	}
+	if !strings.Contains(out.String(), "Checksum verified successfully") {
+		t.Errorf("upgrade output missing checksum verification: %s", out.String())
+	}
+}
+
+func TestUpgradeAlreadyCurrent(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"tag_name": "v0.1.0", "html_url": "https://github.com/test/repo/releases/tag/v0.1.0"}`))
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	var out, errOut bytes.Buffer
+	if code := Upgrade("v0.1.0", &out, &errOut); code != 0 {
+		t.Fatalf("Upgrade() = %d, want 0; stderr=%s", code, errOut.String())
+	}
+	if !strings.Contains(out.String(), "already up to date") {
+		t.Errorf("upgrade output missing up-to-date message: %s", out.String())
+	}
+}
+
+func TestUpgradeFetchError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unavailable", http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+
+	setGitHubBases(t, ts.URL, ts.URL)
+	t.Setenv("SWAPAUDIT_REPO", "test/repo")
+
+	var out, errOut bytes.Buffer
+	if code := Upgrade("v0.1.0", &out, &errOut); code != 1 {
+		t.Fatalf("Upgrade() = %d, want 1", code)
+	}
+	if !strings.Contains(errOut.String(), "Error checking for updates") {
+		t.Errorf("upgrade stderr missing fetch error: %s", errOut.String())
 	}
 }
 

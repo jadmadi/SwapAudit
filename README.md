@@ -54,7 +54,7 @@ SwapAudit. It reads `/proc`, ranks swap and `/tmp` occupants, classifies the saf
 | **Act** | Dry-run, confirmation prompts, `SIGTERM` only after re-reading start ticks, `os.RemoveAll` only inside confined paths | `internal/cleaner` |
 | **Explain** | Ranked tables, category totals, shell aggregation, `NO_COLOR`, ASCII fallback, terminal-width adaptation | `internal/app`, `internal/term` |
 
-**Measured on the reference host:** a full audit completed in 81 ms with `--no-update-check`; the binary is a 6.6 MB static x86-64 build with zero non-standard-library dependencies. This is one host observation, not a universal benchmark.
+**Measured on the reference host:** a full audit completed in 81 ms; the binary is a 6.6 MB static x86-64 build with zero non-standard-library dependencies. This is one host observation, not a universal benchmark.
 
 ## How it compares
 
@@ -76,7 +76,7 @@ The repository is private. Authenticate with GitHub first.
 git clone https://github.com/jadmadi/SwapAudit.git
 cd SwapAudit
 make build
-./swapaudit --no-update-check --no-color
+./swapaudit --no-color
 ```
 
 Install to `~/.local/bin`:
@@ -186,11 +186,27 @@ The full contract, including the manual systemd/other-UID verification protocol,
 | `--max-age <duration>` | `12h` | Stale-cache cutoff |
 | `--idle-threshold <duration>` | `2h` | Dormant-agent cutoff |
 | `--tmp-pattern <pattern>` | built-in list | Additional `/tmp` pattern (repeatable) |
-| `--no-update-check` | `false` | Skip the current background release check |
+| `--check-updates` | `false` | One explicit GitHub release check; see `PRIVACY.md` |
 | `--ascii` | `false` | Plain ASCII output |
 | `--no-color` | `false` | Disable ANSI color (also honors `NO_COLOR`) |
 | `-v`, `--version` | `false` | Print version and build metadata |
 | `-h`, `--help` | `false` | Show usage |
+
+## Update checks and privacy
+
+The default audit performs **no network I/O**.
+
+```bash
+# One explicit update check
+swapaudit --check-updates
+
+# Equivalent opt-in for scripts
+SWAPAUDIT_CHECK_UPDATES=1 swapaudit
+```
+
+The check performs one `GET` to the GitHub release API, sends `User-Agent: swapaudit`, and does not send the local version, hostname, username, or usage data. It writes a small state file under `$XDG_CACHE_HOME/swapaudit/` or `~/.cache/swapaudit/`. The full contract is in [`PRIVACY.md`](PRIVACY.md).
+
+`swapaudit upgrade` is separate: it always uses the network because it downloads and verifies a release binary.
 
 ## How it works
 
