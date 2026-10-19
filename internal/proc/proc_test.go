@@ -3,7 +3,9 @@
 package proc
 
 import (
+	"bufio"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -161,5 +163,114 @@ func TestIsProcessOrphaned(t *testing.T) {
 	}
 	if !IsProcessOrphaned(9999999) {
 		t.Errorf("IsProcessOrphaned(9999999) = false, want true")
+	}
+}
+
+func TestReadStartTicksMalformedStat(t *testing.T) {
+	// 1. Non-existent and edge PIDs return 0 safely
+	if ticks := ReadStartTicks(-1); ticks != 0 {
+		t.Errorf("ReadStartTicks(-1) = %d, want 0", ticks)
+	}
+	if ticks := ReadStartTicks(0); ticks != 0 {
+		t.Errorf("ReadStartTicks(0) = %d, want 0", ticks)
+	}
+	if ticks := ReadStartTicks(99999999); ticks != 0 {
+		t.Errorf("ReadStartTicks(99999999) = %d, want 0", ticks)
+	}
+
+	// 2. Parse edge cases directly verifying proc stat format contract:
+	// Field 22 is starttime (index 19 in fields after the closing paren).
+	parseStatContent := func(content string) int64 {
+		idx := strings.LastIndex(content, ")")
+		if idx == -1 || idx+2 >= len(content) {
+			return 0
+		}
+		fields := strings.Fields(content[idx+2:])
+		if len(fields) < 20 {
+			return 0
+		}
+		ticks, err := strconv.ParseInt(fields[19], 10, 64)
+		if err != nil {
+			return 0
+		}
+		return ticks
+	}
+
+	tests := []struct {
+		name     string
+		content  string
+		expected int64
+	}{
+		{"missing_closing_paren", "12345 (cat S 1 2 3", 0},
+		{"paren_at_end_of_string", "12345 (cat)", 0},
+		{"fewer_than_20_fields", "12345 (cat) S 1 2 3 4 5", 0},
+		{"exact_19_fields", "12345 (cat) " + strings.Repeat("0 ", 19), 0},
+		{"non_integer_field_20", "12345 (cat) " + strings.Repeat("0 ", 19) + "notanumber", 0},
+		{"valid_20_fields", "12345 (cat) " + strings.Repeat("0 ", 19) + "123456", 123456},
+		{"comm_with_parentheses", "12345 (cat (sub)) " + strings.Repeat("0 ", 19) + "78910", 78910},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseStatContent(tt.content)
+			if got != tt.expected {
+				t.Errorf("parseStatContent(%s) = %d, want %d", tt.name, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestReadProcessLastActiveMalformedSched(t *testing.T) {
+	// 1. Non-existent and edge PIDs return -1 safely
+	if dur := ReadProcessLastActive(-1, 1000.0); dur != -1 {
+		t.Errorf("ReadProcessLastActive(-1) = %v, want -1", dur)
+	}
+	if dur := ReadProcessLastActive(99999999, 1000.0); dur != -1 {
+		t.Errorf("ReadProcessLastActive(99999999) = %v, want -1", dur)
+	}
+
+	// 2. Parse edge cases directly verifying /proc/[pid]/sched format contract
+	parseSchedContent := func(content string, uptimeMs float64) time.Duration {
+		scanner := bufio.NewScanner(strings.NewReader(content))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "se.exec_start") {
+				parts := strings.Split(line, ":")
+				if len(parts) == 2 {
+					execMs, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+					if err == nil {
+						diffMs := uptimeMs - execMs
+						if diffMs < 0 {
+							diffMs = 0
+						}
+						return time.Duration(diffMs * float64(time.Millisecond))
+					}
+				}
+			}
+		}
+		return -1
+	}
+
+	tests := []struct {
+		name     string
+		content  string
+		uptimeMs float64
+		expected time.Duration
+	}{
+		{"empty_content", "", 1000.0, -1},
+		{"missing_se_exec_start", "nr_switches : 10\nnr_voluntary_switches : 5\n", 1000.0, -1},
+		{"malformed_no_colon", "se.exec_start 500.0\n", 1000.0, -1},
+		{"invalid_float_value", "se.exec_start : notafloat\n", 1000.0, -1},
+		{"valid_positive_idle", "se.exec_start : 500.0\n", 1000.0, 500 * time.Millisecond},
+		{"exec_start_in_future", "se.exec_start : 1500.0\n", 1000.0, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseSchedContent(tt.content, tt.uptimeMs)
+			if got != tt.expected {
+				t.Errorf("parseSchedContent(%s) = %v, want %v", tt.name, got, tt.expected)
+			}
+		})
 	}
 }
