@@ -40,6 +40,18 @@ Proposals introducing any of the following are considered out of scope:
 
 ---
 
+## 2a. Feature Freeze: Demand Validation
+
+Until `public-install-demand-validation` is certified:
+
+**Allowed:** bug fixes, safety fixes, documentation, distribution, release verification, and work required by the three prerequisite goals.
+
+**Not allowed:** new scanners, new agent runtimes, new cleanup categories, JSON output, package-manager packages, GUI, daemon/watch mode, telemetry, pricing/paywall work, or any scope expansion.
+
+Feature requests go to `docs/research/feature-backlog.md`; no feature goal may be created or claimed. The freeze is lifted only by a dated decision in `docs/research/decision.md`.
+
+---
+
 ## 3. Decision Classes & Review Timers
 
 To prevent unbounded stalls or silent abandonment, every decision class operates on an explicit clock:

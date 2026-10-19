@@ -4,10 +4,10 @@
 
 ### Phase 1 — Write the protocol and freeze the scope
 
-- [ ] Create `docs/research/README.md` with purpose, target profile, recruitment, consent, bias, decision rules, and artifact locations.
-- [ ] Create `docs/research/interview-script.md` with the 12 questions and the consent script.
-- [ ] Add the feature-freeze section to `GOVERNANCE.md` with allowed/not-allowed work.
-- [ ] Add a freeze banner to `goals/README.md` pointing to this goal.
+- [x] Create `docs/research/README.md` with purpose, target profile, recruitment, consent, bias, decision rules, and artifact locations.
+- [x] Create `docs/research/interview-script.md` with the 12 questions and the consent script.
+- [x] Add the feature-freeze section to `GOVERNANCE.md` with allowed/not-allowed work.
+- [x] Add a freeze banner to `goals/README.md` pointing to this goal.
 - [ ] Add `docs/research/feature-backlog.md` with an empty table and "deferred until validation" status.
 - [ ] Confirm `standalone-v0-1-0-release` is certified; if not, stop and keep this goal blocked.
 
