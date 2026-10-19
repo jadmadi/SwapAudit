@@ -154,6 +154,15 @@ fi
 echo -e "   ${GREEN}✔ Privacy sentry clean.${RESET}"
 
 # -----------------------------------------------------------------------------
+# 1d. Contact Sentry: canonical security/support/conduct contacts
+# -----------------------------------------------------------------------------
+echo -e "\n${BOLD}1d. Running Contact Sentry (security/support/conduct contacts)...${RESET}"
+if ! bash ./scripts/check-contacts.sh .; then
+    echo -e "   ${RED}✖ Error: contact sentry failed.${RESET}"
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
 # 2. Go Formatting (gofmt)
 # -----------------------------------------------------------------------------
 echo -e "\n${BOLD}2. Checking Go Formatting (gofmt)...${RESET}"

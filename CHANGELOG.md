@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--include-orphaned` opt-in for including orphaned-agent cleanup with `--clean-all`.
 - `--check-updates` and `SWAPAUDIT_CHECK_UPDATES=1` opt-in for one explicit release check.
 - `PRIVACY.md` and `docs/decisions/0001-update-check-policy.md`.
+- `SUPPORT.md`, issue templates, PR template, and `docs/decisions/0002-security-contact.md`.
+- Contact-consistency sentry with pass/fail fixtures.
 - UID, tty, and cgroup evidence parsing plus a fail-closed orphan classifier.
 - One-line cleanup summary with counts and skip reasons.
 - `docs/safety.md` operator safety contract and manual verification protocol.
@@ -28,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the 150 ms background update-check race and the automatic 24-hour cadence.
 - Removed `--no-update-check` and `SWAPAUDIT_NO_UPDATE_CHECK`; the default is silent.
 - Enforced fail-closed temporary file creation in build script.
+
+### Security
+- Consolidated security, support, and conduct contacts on `contact@jadmadi.net` with GitHub private advisories as the primary security channel.
+- Removed the conflicting `jad@madi.me` security contact from the published policy.
 
 ### Fixed
 - False-positive orphan classification for systemd-managed agents.

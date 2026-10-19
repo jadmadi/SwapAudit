@@ -246,6 +246,13 @@ flowchart TD
 - **Feature freeze:** no new scanners, agent runtimes, JSON, package managers, GUI, daemon, telemetry, or pricing work until [`public-install-demand-validation`](goals/public-install-demand-validation/goal.md) is certified.
 - **Goal index:** [`goals/README.md`](goals/README.md).
 
+## Support and security
+
+- **Bugs and feature requests:** GitHub Issues using the templates.
+- **Security vulnerabilities:** [GitHub Private Vulnerability Reporting](https://github.com/jadmadi/SwapAudit/security/advisories/new) is primary; `contact@jadmadi.net` is the fallback. Do not open a public issue for a vulnerability. See [`SECURITY.md`](SECURITY.md).
+- **General support:** [`SUPPORT.md`](SUPPORT.md). Support is best-effort; there is no SLA.
+- **Conduct:** [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) or `contact@jadmadi.net`.
+
 ## Development
 
 ```bash
