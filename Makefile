@@ -39,6 +39,8 @@ clean:
 	rm -f $(BIN) coverage.out coverage.html
 	rm -rf dist/ build/
 
-install: build
-	mkdir -p $(HOME)/.local/bin
-	cp $(BIN) $(HOME)/.local/bin/$(BIN)
+PREFIX ?= $(HOME)/.local
+BINDIR ?= $(PREFIX)/bin
+
+install:
+	./scripts/build --release --install="$(BINDIR)"
