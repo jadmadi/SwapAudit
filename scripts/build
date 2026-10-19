@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+PKG="github.com/jadmadi/swapaudit/cmd/swapaudit"
+VERSION_PKG="github.com/jadmadi/swapaudit/internal/version"
+
+VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo "dev")"
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo "none")"
+DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+LDFLAGS="-s -w -X ${VERSION_PKG}.Version=${VERSION} -X ${VERSION_PKG}.Commit=${COMMIT} -X ${VERSION_PKG}.Date=${DATE}"
+
+MODE="${1:---release}"
+
+case "${MODE}" in
+  --dev)
+    echo "==> Building swapaudit (dev)..."
+    go build -o swapaudit "${PKG}"
+    ;;
+  --release)
+    echo "==> Building swapaudit (release)..."
+    CGO_ENABLED=0 go build -trimpath -ldflags="${LDFLAGS}" -o swapaudit "${PKG}"
+    ;;
+  --upx)
+    echo "==> Building swapaudit with UPX compression..."
+    CGO_ENABLED=0 go build -trimpath -ldflags="${LDFLAGS}" -o swapaudit "${PKG}"
+    if which upx >/dev/null 2>&1; then
+      upx --best --lzma swapaudit
+    else
+      echo "Notice: upx command not found, skipping compression."
+    fi
+    ;;
+  --all)
+    echo "==> Cross-compiling swapaudit for Linux architectures..."
+    mkdir -p dist
+    for ARCH in amd64 arm64 arm riscv64; do
+      echo "  -> linux/${ARCH}"
+      GOOS=linux GOARCH="${ARCH}" CGO_ENABLED=0 go build -trimpath -ldflags="${LDFLAGS}" -o "dist/swapaudit-linux-${ARCH}" "${PKG}"
+    done
+    ;;
+  *)
+    echo "Usage: $0 [--release|--dev|--upx|--all]"
+    exit 1
+    ;;
+esac
+
+echo "==> Build complete."

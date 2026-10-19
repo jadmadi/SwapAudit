@@ -1,5 +1,10 @@
 # swapaudit
 
+[![CI](https://github.com/jadmadi/swapaudit/actions/workflows/ci.yml/badge.svg)](https://github.com/jadmadi/swapaudit/actions/workflows/ci.yml)
+[![Release](https://github.com/jadmadi/swapaudit/actions/workflows/release.yml/badge.svg)](https://github.com/jadmadi/swapaudit/actions/workflows/release.yml)
+[![License: WaqfDPL](https://img.shields.io/badge/License-WaqfDPL--Mulzim--1.0-emerald.svg)](WaqfDPL-1.0.md)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE-AGPL.txt)
+
 Auditor and surgical cleanup tool for swap memory and in-memory caches on Linux.
 
 ```
@@ -111,18 +116,24 @@ flowchart TD
 
 ## Installation
 
-Clone the repository and build with standard Go:
+### From source
 
 ```bash
 git clone https://github.com/jadmadi/swapaudit.git
 cd swapaudit
-go build -o swapaudit .
+make build
 ```
 
-To install directly to your local user binary path:
+To install directly to `~/.local/bin/swapaudit`:
 
 ```bash
-go build -o ~/.local/bin/swapaudit .
+make install
+```
+
+### Via go install
+
+```bash
+go install github.com/jadmadi/swapaudit/cmd/swapaudit@latest
 ```
 
 Requirements: Linux with kernel 3.10 or newer (tested on Linux 6.x with systemd and glibc).
@@ -227,6 +238,12 @@ Disable ANSI colors:
 swapaudit --no-color
 ```
 
+Print version information:
+
+```bash
+swapaudit --version
+```
+
 ## CLI flag reference
 
 | Flag | Default | Description |
@@ -247,6 +264,7 @@ swapaudit --no-color
 | --tmp-pattern | (list) | Additional pattern for temporary artifacts in /tmp |
 | --ascii | false | Use plain ASCII glyphs instead of Unicode box characters |
 | --no-color | false | Disable ANSI color highlighting |
+| -v, --version | false | Print swapaudit version and build metadata |
 
 ## Dual license: WaqfDPL and GNU AGPLv3
 

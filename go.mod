@@ -1,3 +1,3 @@
-module swapaudit
+module github.com/jadmadi/swapaudit
 
-go 1.27.2
+go 1.23.0

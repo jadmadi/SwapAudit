@@ -1,0 +1,86 @@
+//go:build linux
+
+package app
+
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestRunVersion(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--version"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run(--version) exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "swapaudit") {
+		t.Errorf("Run(--version) output missing 'swapaudit': %q", output)
+	}
+}
+
+func TestRunInvalidSort(t *testing.T) {
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stderr = w
+
+	code := Run([]string{"--sort", "invalid"})
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 2 {
+		t.Errorf("Run(--sort invalid) exit code = %d, want 2", code)
+	}
+	if !strings.Contains(output, "invalid --sort value") {
+		t.Errorf("Run(--sort invalid) stderr missing expected error message: %q", output)
+	}
+}
+
+func TestRunDryRunCleanAll(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() failed: %v", err)
+	}
+	os.Stdout = w
+
+	code := Run([]string{"--dry-run", "--clean-all", "--no-color", "--ascii"})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	if code != 0 {
+		t.Errorf("Run(--dry-run --clean-all) exit code = %d, want 0", code)
+	}
+	if !strings.Contains(output, "Cleanup Execution (Dry Run)") {
+		t.Errorf("Run(--dry-run --clean-all) output missing dry run header: %q", output)
+	}
+}

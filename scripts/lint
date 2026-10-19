@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+echo "==> Checking gofmt formatting..."
+DIFF="$(gofmt -l .)"
+if [ -n "${DIFF}" ]; then
+  echo "Files needing formatting:"
+  echo "${DIFF}"
+  exit 1
+fi
+
+echo "==> Running go vet..."
+go vet ./...
+
+if which golangci-lint >/dev/null 2>&1; then
+  echo "==> Running golangci-lint..."
+  golangci-lint run ./...
+fi
+
+echo "==> Lint checks passed."

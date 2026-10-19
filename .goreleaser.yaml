@@ -1,0 +1,51 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: swapaudit
+    main: ./cmd/swapaudit
+    binary: swapaudit
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - riscv64
+    goarm:
+      - "7"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/jadmadi/swapaudit/internal/version.Version={{.Version}}
+      - -X github.com/jadmadi/swapaudit/internal/version.Commit={{.Commit}}
+      - -X github.com/jadmadi/swapaudit/internal/version.Date={{.Date}}
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - LICENSE-AGPL.txt
+      - WaqfDPL-1.0.md
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
