@@ -3,6 +3,7 @@
 package cleaner
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"os"
@@ -191,5 +192,109 @@ func TestExecuteCleanupDryRun(t *testing.T) {
 
 	if !strings.Contains(output, "Would reclaim 15.0 MB tmp, 40.0 MB swap") {
 		t.Errorf("ExecuteCleanup output missing expected reclaim summary: %s", output)
+	}
+}
+
+func TestAskConfirmationReaderVariants(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"yes_lowercase", "yes\n", true},
+		{"yes_uppercase", "YES\n", true},
+		{"yes_mixed", "Yes\n", true},
+		{"y_lowercase", "y\n", true},
+		{"y_uppercase", "Y\n", true},
+		{"y_with_spaces", "  y  \n", true},
+		{"no_lowercase", "no\n", false},
+		{"no_uppercase", "NO\n", false},
+		{"n_lowercase", "n\n", false},
+		{"n_uppercase", "N\n", false},
+		{"empty_enter", "\n", false},
+		{"spaces_only", "   \n", false},
+		{"arbitrary_text", "maybe\n", false},
+		{"eof_empty", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := bufio.NewReader(strings.NewReader(tt.input))
+			oldStdout := os.Stdout
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatalf("os.Pipe failed: %v", err)
+			}
+			os.Stdout = w
+
+			got := AskConfirmationReader(reader, "Continue?")
+
+			w.Close()
+			os.Stdout = oldStdout
+			_, _ = io.Copy(io.Discard, r)
+
+			if got != tt.expected {
+				t.Errorf("AskConfirmationReader with input %q = %v, want %v", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPruneTmpTargetsLiveExecution(t *testing.T) {
+	tempDir := t.TempDir()
+
+	file1 := filepath.Join(tempDir, "file1.cache")
+	if err := os.WriteFile(file1, []byte("cache data 1"), 0o644); err != nil {
+		t.Fatalf("failed to create file1: %v", err)
+	}
+
+	dir1 := filepath.Join(tempDir, "nested-dir")
+	if err := os.MkdirAll(dir1, 0o755); err != nil {
+		t.Fatalf("failed to create dir1: %v", err)
+	}
+	nestedFile := filepath.Join(dir1, "subfile.txt")
+	if err := os.WriteFile(nestedFile, []byte("nested"), 0o644); err != nil {
+		t.Fatalf("failed to create nestedFile: %v", err)
+	}
+
+	targets := []model.SwapItem{
+		{
+			Path:      file1,
+			SizeBytes: 12,
+		},
+		{
+			Path:      dir1,
+			SizeBytes: 6,
+		},
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe failed: %v", err)
+	}
+	os.Stdout = w
+
+	reclaimed := PruneTmpTargets(targets, "Test Live Cleanup", "Prompt?", false, true, 40, "")
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	if reclaimed != 18 {
+		t.Errorf("PruneTmpTargets() reclaimed = %d, want %d", reclaimed, 18)
+	}
+	if !strings.Contains(output, "pruned") {
+		t.Errorf("PruneTmpTargets() output missing 'pruned': %s", output)
+	}
+
+	if _, err := os.Stat(file1); !os.IsNotExist(err) {
+		t.Errorf("expected file1 to be removed, but still exists: %v", err)
+	}
+	if _, err := os.Stat(dir1); !os.IsNotExist(err) {
+		t.Errorf("expected dir1 to be removed, but still exists: %v", err)
 	}
 }
