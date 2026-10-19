@@ -27,11 +27,30 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 6. **Auto-Reconciliation**: Run `sila goals` to scan commits, mark 🟢 **Implemented**, and clear the claim lock.
 
 ## Summary
-- **Total Goals**: 1
-- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
+- **Total Goals**: 5
+- 🟡 **Ready to Execute (Pending)**: 3 (3 independent ⚡, 0 unblocked 🔗)
+- 🔵 **In Progress (Claimed)**: 1
 - 🟢 **Implemented**: 1 (1 verified 📜, 0 unverified)
-- 🎯 **By Tier**: 0 immediate (Tier 1), 1 roadmap (Tier 2), 0 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 4/4 completed (100%)
+- 🎯 **By Tier**: 2 immediate (Tier 1), 2 roadmap (Tier 2), 1 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
+- 📋 **Execution Tasks Progress**: 9/20 completed (45%)
+
+---
+
+## 🔵 In Progress (Claimed Goals)
+
+| Goal Package | Tier | Mode | Agent | Status & Note | Started |
+| :--- | :---: | :---: | :--- | :--- | :--- |
+| [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `🎯 Immediate` | `⚡ Indep` | `@antigravity` | Implementing synchronous cache loading, cancellation context, and goroutine cleanup for update check | 0s ago |
+
+---
+
+## 🟡 Ready to Execute (Pending Goals)
+
+| Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
+| :--- | :---: | :---: | :--- | :--- | :--- |
+| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `🗺️ Roadmap` | `🚢 SHIP ⚡ Independent` | - | Implement ANSI-Aware Table Truncation and Styling Separation — Fix string truncation in term.Truncate to track and preserve ANSI escape code se... | `/goal goals/ansi-truncate-rendering/goal.md` |
+| [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent` | - | Harden Process and Filesystem Cleanup Safety Guards — Add defensive bounds to process termination and filesystem pruning in cleaner.go... | `/goal goals/cleaner-safety-guards/goal.md` |
+| [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `✨ Nice-to-Have` | `🚢 SHIP ⚡ Independent` | - | Align Makefile Install Target with Hardened Build Script — Update Makefile install target to invoke scripts/build --install rather than pla... | `/goal goals/makefile-install-alignment/goal.md` |
 
 ---
 
