@@ -1,5 +1,12 @@
 # Goal: Implement ANSI-Aware Table Truncation and Styling Separation
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_ansi-truncate-rendering_1792402811`
+
+
 ## Goal Description
 Fix string truncation in term.Truncate to track and preserve ANSI escape code sequences without breaking terminal styling when colored columns exceed their allocated width, or format column colors in RenderTable after alignment.
 

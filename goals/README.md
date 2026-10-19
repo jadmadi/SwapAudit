@@ -28,8 +28,8 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 5
-- 🟡 **Ready to Execute (Pending)**: 2 (2 independent ⚡, 0 unblocked 🔗)
-- 🟢 **Implemented**: 3 (3 verified 📜, 0 unverified)
+- 🟡 **Ready to Execute (Pending)**: 1 (1 independent ⚡, 0 unblocked 🔗)
+- 🟢 **Implemented**: 4 (4 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 2 immediate (Tier 1), 2 roadmap (Tier 2), 1 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
 - 📋 **Execution Tasks Progress**: 20/20 completed (100%)
 
@@ -39,7 +39,6 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
-| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `🗺️ Roadmap` | `🚢 SHIP ⚡ Independent` | - | Implement ANSI-Aware Table Truncation and Styling Separation — Fix string truncation in term.Truncate to track and preserve ANSI escape code se... | `/goal goals/ansi-truncate-rendering/goal.md` |
 | [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `✨ Nice-to-Have` | `🚢 SHIP ⚡ Independent` | - | Align Makefile Install Target with Hardened Build Script — Update Makefile install target to invoke scripts/build --install rather than pla... | `/goal goals/makefile-install-alignment/goal.md` |
 
 ---
@@ -48,6 +47,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Mode | Shape | Verification | Task / Ref | Commit |
 | :--- | :---: | :--- | :---: | :--- | :--- |
+| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `d1d4336` |
 | [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `3854d3b` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `f4f1f93` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `602fa2f` |
