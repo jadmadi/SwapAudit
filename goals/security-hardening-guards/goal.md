@@ -1,5 +1,12 @@
 # Goal: Harden Self-Updater Stream Limits and Temporary File Confinement
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_security-hardening-guards_1792406771`
+
+
 ## Goal Description
 Harden self-updater and build script against denial of service and temporary file collisions: enforce a 50MB stream limit on release binary downloads and 1MB on checksum files in updater.go, scope fallback cache state filenames to the current UID, and enforce fail-closed temporary file creation in scripts/build.
 
