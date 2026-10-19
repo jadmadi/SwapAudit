@@ -19,3 +19,6 @@ rm/
 scratch/
 dist/
 build/
+
+# Ephemeral goal claim locks (managed by sila)
+goals/*/claim.json
