@@ -28,20 +28,11 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 ## Summary
 - **Total Goals**: 15
-- 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
-- 🔵 **In Progress (Claimed)**: 1
+- 🟡 **Ready to Execute (Pending)**: 1 (1 independent ⚡, 0 unblocked 🔗)
 - ⛔ **Blocked on Prerequisites**: 2
-- 🟢 **Implemented**: 11 (10 verified 📜, 1 unverified)
+- 🟢 **Implemented**: 12 (10 verified 📜, 2 unverified)
 - 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 89/338 completed (26%)
-
----
-
-## 🔵 In Progress (Claimed Goals)
-
-| Goal Package | Tier | Mode | Agent | Status & Note | Started |
-| :--- | :---: | :---: | :--- | :--- | :--- |
-| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `🎯 Immediate` | `⚡ Indep` | `@commandcode` | Implementing opt-in update check, privacy contract, and removal of the 150ms background race | 0s ago |
+- 📋 **Execution Tasks Progress**: 147/338 completed (43%)
 
 ---
 
@@ -50,7 +41,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | Goal Package | Tier | Mode & Sequence | Dependencies | Focus & Description | Launch Command |
 | :--- | :---: | :---: | :--- | :--- | :--- |
 | [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⚡ Independent (#3)` | - | Consolidate Security, Support, and Vulnerability Reporting Contacts — Replace the inconsistent and partly unusable security/support surface with one c... | `/goal goals/security-contact-consolidation/goal.md` |
-| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#4)` | Prereqs: update-check-consent-disclosure, security-contact-consolidation | Publish Standalone Repository and v0.1.0 Release with Four Assets — Turn the untracked local project into a public, installable, verifiable standalo... | `/goal goals/standalone-v0-1-0-release/goal.md` |
+| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#4)` | Prereqs: security-contact-consolidation | Publish Standalone Repository and v0.1.0 Release with Four Assets — Turn the untracked local project into a public, installable, verifiable standalo... | `/goal goals/standalone-v0-1-0-release/goal.md` |
 | [`public-install-demand-validation`](public-install-demand-validation/goal.md) | `🎯 Immediate` | `🚢 SHIP ⛔ Blocked (#5)` | Prereqs: standalone-v0-1-0-release | Validate Demand with Five User Interviews and a Public Install Test — Run the cheapest credible demand test before adding any feature: 1. **Five struc... | `/goal goals/public-install-demand-validation/goal.md` |
 
 ---
@@ -60,6 +51,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | Goal Package | Mode | Shape | Verification | Task / Ref | Commit |
 | :--- | :---: | :--- | :---: | :--- | :--- |
 | [`cleanup-orphan-uid-safety`](cleanup-orphan-uid-safety/goal.md) | `⚡ Indep` | 🚢 SHIP | unverified | Git Commit | `ef471b1` |
+| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `⚡ Indep` | 🚢 SHIP | unverified | Git Commit | `b40db44` |
 | [`security-hardening-guards`](security-hardening-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `fc6640d55580576547bc841728758df1d5b62bf5` |
 | [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `d1d43360993af5d9c1ea675339a394c02e465ad3` |
 | [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `003aaa91687d3a3b57a76bc4632ff6ccbf488ab1` |

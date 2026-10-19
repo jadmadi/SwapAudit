@@ -4,85 +4,85 @@
 
 ### Phase 1 — Record the policy decision
 
-- [ ] Write `docs/decisions/0001-update-check-policy.md`; choose A (opt-in, preferred) or B (disclosed default); record approver, date, rationale, and the exact privacy sentence.
-- [ ] Write `PRIVACY.md` with the endpoint, method, headers, data sent, data not sent, state-file path, and opt-in/opt-out mechanism.
-- [ ] Link `PRIVACY.md` from `README.md` and `GOVERNANCE.md`.
-- [ ] If Option A, rewrite `GOVERNANCE.md:36` to say the default performs no network I/O and an explicit opt-in contacts GitHub.
-- [ ] If Option B, remove the unqualified "does not phone home" claim and describe the disclosed check.
+- [x] Write `docs/decisions/0001-update-check-policy.md`; choose A (opt-in, preferred) or B (disclosed default); record approver, date, rationale, and the exact privacy sentence.
+- [x] Write `PRIVACY.md` with the endpoint, method, headers, data sent, data not sent, state-file path, and opt-in/opt-out mechanism.
+- [x] Link `PRIVACY.md` from `README.md` and `GOVERNANCE.md`.
+- [x] If Option A, rewrite `GOVERNANCE.md:36` to say the default performs no network I/O and an explicit opt-in contacts GitHub.
+- [x] If Option B, remove the unqualified "does not phone home" claim and describe the disclosed check.
 
 ### Phase 2 — Refactor the updater API
 
-- [ ] Add `CheckForUpdate(ctx context.Context, currentVersion string) (*UpdateInfo, error)`.
-- [ ] Remove or rename `CheckDailyUpdate`/`CheckDailyUpdateWithContext` so no API promises a cadence.
-- [ ] Delete `GetCachedUpdate` and `CheckInterval` if they become unused; do not leave dead code.
-- [ ] Keep `FetchLatestReleaseContext`, `IsNewer`, `CompareVersions`, `LoadState`, and `SaveState`.
-- [ ] Preserve previous `LatestVersion`/`ReleaseURL` on failure; write `LastChecked` according to the policy.
-- [ ] Add tests for success, 404, 500, malformed JSON, empty tag, timeout, read-only cache, and commit-hash current version.
-- [ ] Run `go test -race ./internal/updater`.
+- [x] Add `CheckForUpdate(ctx context.Context, currentVersion string) (*UpdateInfo, error)`.
+- [x] Remove or rename `CheckDailyUpdate`/`CheckDailyUpdateWithContext` so no API promises a cadence.
+- [x] Delete `GetCachedUpdate` and `CheckInterval` if they become unused; do not leave dead code.
+- [x] Keep `FetchLatestReleaseContext`, `IsNewer`, `CompareVersions`, `LoadState`, and `SaveState`.
+- [x] Preserve previous `LatestVersion`/`ReleaseURL` on failure; write `LastChecked` according to the policy.
+- [x] Add tests for success, 404, 500, malformed JSON, empty tag, timeout, read-only cache, and commit-hash current version.
+- [x] Run `go test -race ./internal/updater`.
 
 ### Phase 3 — Refactor the app update path
 
-- [ ] Add `var checkForUpdate = updater.CheckForUpdate` in `internal/app/app.go`.
-- [ ] Remove the `go func()` + `time.After(150 * time.Millisecond)` block.
-- [ ] Add `--check-updates` (default false) and `SWAPAUDIT_CHECK_UPDATES=1` opt-in (Option A).
-- [ ] Or add the disclosure line and synchronous bounded check on the default path (Option B).
-- [ ] Ensure `--version`, `--help`, and `upgrade --help` exit before any update check.
-- [ ] Ensure `--sort invalid --check-updates` exits `2` without a network call.
-- [ ] Ensure `upgrade` takes precedence over `--check-updates`.
-- [ ] Remove `--no-update-check` and `SWAPAUDIT_NO_UPDATE_CHECK` under Option A; update all call sites and tests. Under Option B, keep both and test them.
-- [ ] Print the notice exactly once; do not duplicate cached and live notices.
-- [ ] Bound the check to 2 s; on timeout print `warning: update check timed out after 2s` to stderr and exit `0`.
-- [ ] Run `go test -race ./internal/app`.
+- [x] Add `var checkForUpdate = updater.CheckForUpdate` in `internal/app/app.go`.
+- [x] Remove the `go func()` + `time.After(150 * time.Millisecond)` block.
+- [x] Add `--check-updates` (default false) and `SWAPAUDIT_CHECK_UPDATES=1` opt-in (Option A).
+- [x] Or add the disclosure line and synchronous bounded check on the default path (Option B).
+- [x] Ensure `--version`, `--help`, and `upgrade --help` exit before any update check.
+- [x] Ensure `--sort invalid --check-updates` exits `2` without a network call.
+- [x] Ensure `upgrade` takes precedence over `--check-updates`.
+- [x] Remove `--no-update-check` and `SWAPAUDIT_NO_UPDATE_CHECK` under Option A; update all call sites and tests. Under Option B, keep both and test them.
+- [x] Print the notice exactly once; do not duplicate cached and live notices.
+- [x] Bound the check to 2 s; on timeout print `warning: update check timed out after 2s` to stderr and exit `0`.
+- [x] Run `go test -race ./internal/app`.
 
 ### Phase 4 — Add tests and close the coverage gap
 
-- [ ] `TestRunDefaultMakesNoNetworkRequest` with a `checkForUpdate` that fails the test if called.
-- [ ] `TestRunCheckUpdatesFlag` with a fake notice.
-- [ ] `TestRunCheckUpdatesEnv` with `SWAPAUDIT_CHECK_UPDATES=1`.
-- [ ] `TestRunVersionSkipsUpdateCheck`.
-- [ ] `TestRunUpgradeHelpSkipsUpdateCheck`.
-- [ ] `TestRunInvalidSortSkipsUpdateCheck`.
-- [ ] `TestCheckForUpdateTimeout` with a slow `httptest` server.
-- [ ] `TestCheckForUpdateSuccessWritesState`.
-- [ ] `TestCheckForUpdateFailurePreservesState`.
-- [ ] `TestCheckForUpdateCommitHashVersion`.
-- [ ] Raise `internal/updater` coverage to at least 70%; do not lower `internal/app` coverage.
-- [ ] Run `go test -race -cover ./internal/updater ./internal/app`.
+- [x] `TestRunDefaultMakesNoNetworkRequest` with a `checkForUpdate` that fails the test if called.
+- [x] `TestRunCheckUpdatesFlag` with a fake notice.
+- [x] `TestRunCheckUpdatesEnv` with `SWAPAUDIT_CHECK_UPDATES=1`.
+- [x] `TestRunVersionSkipsUpdateCheck`.
+- [x] `TestRunUpgradeHelpSkipsUpdateCheck`.
+- [x] `TestRunInvalidSortSkipsUpdateCheck`.
+- [x] `TestCheckForUpdateTimeout` with a slow `httptest` server.
+- [x] `TestCheckForUpdateSuccessWritesState`.
+- [x] `TestCheckForUpdateFailurePreservesState`.
+- [x] `TestCheckForUpdateCommitHashVersion`.
+- [x] Raise `internal/updater` coverage to at least 70%; do not lower `internal/app` coverage.
+- [x] Run `go test -race -cover ./internal/updater ./internal/app`.
 
 ### Phase 5 — Add the claims sentry
 
-- [ ] Extend `scripts/check.sh` (or add `scripts/check-privacy-claims.sh`) to enforce the chosen policy.
-- [ ] Option A: allow "does not phone home by default" only with a `PRIVACY.md` link; fail on an unqualified absolute claim.
-- [ ] Option B: fail if "does not phone home" appears anywhere; require the disclosure sentence in `README.md` and `PRIVACY.md`.
-- [ ] Ensure the sentry does not fail on the governance anti-goal word "telemetry" alone.
-- [ ] Wire the sentry into `scripts/check.sh --full`.
+- [x] Extend `scripts/check.sh` (or add `scripts/check-privacy-claims.sh`) to enforce the chosen policy.
+- [x] Option A: allow "does not phone home by default" only with a `PRIVACY.md` link; fail on an unqualified absolute claim.
+- [x] Option B: fail if "does not phone home" appears anywhere; require the disclosure sentence in `README.md` and `PRIVACY.md`.
+- [x] Ensure the sentry does not fail on the governance anti-goal word "telemetry" alone.
+- [x] Wire the sentry into `scripts/check.sh --full`.
 
 ### Phase 6 — Documentation and help
 
-- [ ] Update `README.md` with an "Update checks and privacy" section.
-- [ ] Update `internal/app/display.go` help text with `--check-updates` and the endpoint.
-- [ ] Update `GOVERNANCE.md` anti-goal #1.
-- [ ] Update `CHANGELOG.md` under `Changed` and `Removed`.
-- [ ] Ensure `PRIVACY.md`, README, GOVERNANCE, and the decision record use the same sentence.
+- [x] Update `README.md` with an "Update checks and privacy" section.
+- [x] Update `internal/app/display.go` help text with `--check-updates` and the endpoint.
+- [x] Update `GOVERNANCE.md` anti-goal #1.
+- [x] Update `CHANGELOG.md` under `Changed` and `Removed`.
+- [x] Ensure `PRIVACY.md`, README, GOVERNANCE, and the decision record use the same sentence.
 
 ### Phase 7 — Verification and evidence
 
-- [ ] `gofmt -l .` returns empty.
-- [ ] `go vet ./...` passes.
-- [ ] `go test -race ./...` passes.
-- [ ] `go test -cover ./internal/updater ./internal/app` meets the coverage targets.
-- [ ] `./scripts/check.sh --full` passes.
-- [ ] `strace -f -e trace=network ./swapaudit --version` shows no network syscalls.
-- [ ] `strace -f -e trace=network ./swapaudit --no-color --ascii --limit 1` shows no network syscalls under Option A.
-- [ ] `./swapaudit --check-updates --no-color --ascii --limit 1` performs exactly one check and prints one notice.
-- [ ] `./swapaudit --sort invalid --check-updates` exits `2` with no network syscalls.
-- [ ] Record all outputs in `goals/update-check-consent-disclosure/evidence.md`.
+- [x] `gofmt -l .` returns empty.
+- [x] `go vet ./...` passes.
+- [x] `go test -race ./...` passes.
+- [x] `go test -cover ./internal/updater ./internal/app` meets the coverage targets.
+- [x] `./scripts/check.sh --full` passes.
+- [x] `strace -f -e trace=network ./swapaudit --version` shows no network syscalls.
+- [x] `strace -f -e trace=network ./swapaudit --no-color --ascii --limit 1` shows no network syscalls under Option A.
+- [x] `./swapaudit --check-updates --no-color --ascii --limit 1` performs exactly one check and prints one notice.
+- [x] `./swapaudit --sort invalid --check-updates` exits `2` with no network syscalls.
+- [x] Record all outputs in `goals/update-check-consent-disclosure/evidence.md`.
 
 ### Phase 8 — Attribution commit
 
-- [ ] Commit with `(goals/update-check-consent-disclosure/goal.md)` or `Goal: update-check-consent-disclosure`, using `fix:` or `feat:`.
-- [ ] Run `sila goals --project=/home/jad/scripts/active/swapaudit`.
-- [ ] Do not push unless explicitly authorized.
+- [x] Commit with `(goals/update-check-consent-disclosure/goal.md)` or `Goal: update-check-consent-disclosure`, using `fix:` or `feat:`.
+- [x] Run `sila goals --project=/home/jad/scripts/active/swapaudit`.
+- [x] Do not push unless explicitly authorized.
 
 ## Tests to Add
 
