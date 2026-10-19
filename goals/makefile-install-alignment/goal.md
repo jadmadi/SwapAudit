@@ -1,5 +1,12 @@
 # Goal: Align Makefile Install Target with Hardened Build Script
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_makefile-install-alignment_1792402828`
+
+
 ## Goal Description
 Update Makefile install target to invoke scripts/build --install rather than plain cp, gaining atomic installation, writable permission checks, and PATH shadowing detection.
 
