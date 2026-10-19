@@ -46,6 +46,7 @@ gh release download "${VERSION}" --repo "${REPO}" --dir "${TMP}" "${DOWNLOAD_PAT
 )
 echo "PASS: checksums verified"
 
+chmod +x "${TMP}/swapaudit-linux-amd64"
 VERSION_OUTPUT=$("${TMP}/swapaudit-linux-amd64" --version)
 if ! grep -Fq "${VERSION}" <<<"${VERSION_OUTPUT}"; then
     echo "FAIL: version output does not contain ${VERSION}: ${VERSION_OUTPUT}" >&2

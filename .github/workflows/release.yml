@@ -85,6 +85,7 @@ jobs:
         run: |
           cd dist
           sha256sum -c checksums.txt --ignore-missing
+          chmod +x swapaudit-linux-amd64
           ./swapaudit-linux-amd64 --version
 
       - name: Verify signature
