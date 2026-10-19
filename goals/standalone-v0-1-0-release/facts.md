@@ -1,5 +1,7 @@
 # Facts: Publish Standalone Repository and Signed v0.1.0 Release with Four Assets
 
+> **Scope note:** the user requested a private repository. Public visibility, public unauthenticated install, and public demand validation are separate decisions tracked by `public-install-demand-validation`. This facts sheet's "public repo" requirements are conditional on that decision.
+
 ## Architectural Invariants & Constraints
 
 - No remote repository creation, push, or release without explicit user approval and a confirmed namespace.
