@@ -27,19 +27,11 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 6. **Auto-Reconciliation**: Run `sila goals` to scan commits, mark 🟢 **Implemented**, and clear the claim lock.
 
 ## Summary
-- **Total Goals**: 15
+- **Total Goals**: 20
 - 🟡 **Ready to Execute (Pending)**: 1 (0 independent ⚡, 1 unblocked 🔗)
-- 🟢 **Implemented**: 14 (10 verified 📜, 4 unverified)
-- 🎯 **By Tier**: 9 immediate (Tier 1), 4 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 281/338 completed (83%)
-
----
-
-> 🧊 **Feature freeze until [`public-install-demand-validation`](public-install-demand-validation/goal.md) is certified.**
->
-> Allowed: bug fixes, safety fixes, documentation, distribution, release verification, and prerequisite work.
->
-> Not allowed: new scanners, agent runtimes, cleanup categories, JSON output, package-manager packages, GUI, daemon/watch mode, telemetry, pricing/paywall work, or scope expansion. Feature requests go to `docs/research/feature-backlog.md`.
+- 🟢 **Implemented**: 19 (16 verified 📜, 3 stale ⚠️, 0 unverified)
+- 🎯 **By Tier**: 13 immediate (Tier 1), 5 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
+- 📋 **Execution Tasks Progress**: 548/593 completed (92%)
 
 ---
 
@@ -55,17 +47,22 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 
 | Goal Package | Mode | Shape | Verification | Task / Ref | Commit |
 | :--- | :---: | :--- | :---: | :--- | :--- |
-| [`cleanup-orphan-uid-safety`](cleanup-orphan-uid-safety/goal.md) | `⚡ Indep` | 🚢 SHIP | unverified | Git Commit | `ef471b1` |
-| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `⚡ Indep` | 🚢 SHIP | unverified | Git Commit | `b40db44` |
-| [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `⚡ Indep` | 🚢 SHIP | unverified | Git Commit | `936e6d8` |
+| [`accounting-reconciliation`](accounting-reconciliation/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `462bfdb` |
+| [`cleanup-orphan-uid-safety`](cleanup-orphan-uid-safety/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Evidence (evidence.md) | `evidence` |
+| [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Evidence (evidence.md) | `evidence` |
+| [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Evidence (evidence.md) | `evidence` |
 | [`security-hardening-guards`](security-hardening-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `fc6640d55580576547bc841728758df1d5b62bf5` |
-| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `d1d43360993af5d9c1ea675339a394c02e465ad3` |
+| [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `2959dd5` |
 | [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `003aaa91687d3a3b57a76bc4632ff6ccbf488ab1` |
 | [`cleaner-interactive-tests`](cleaner-interactive-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `3162132ccf129911b3e9ecd53b05244b775c57ca` |
-| [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `3854d3bb49a39ebd29b778a9f371c0874d181266` |
-| [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `9e578a72c64d494714f74b490baa1396d7c1b3ca` |
+| [`cleaner-safety-guards`](cleaner-safety-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `a0cfa66` |
+| [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | stale ⚠️ | Git Commit | `2784597` |
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `ea9a60d5e17ef35d1b5c57cd4a8050bc4980dbc5` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `f4f1f9339befb56ef5400c6db09a3f354e7109a8` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Audit Receipt | `602fa2f57a75f47311499cd7a498f9532641ab33` |
-| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🔗 Dep` | 🚢 SHIP | unverified | Git Commit | `3b204e5` |
+| [`cache-liveness-classification`](cache-liveness-classification/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `462bfdb` |
+| [`standalone-v0-1-0-release`](standalone-v0-1-0-release/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Evidence (evidence.md) | `evidence` |
 | [`updater-boundary-tests`](updater-boundary-tests/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Audit Receipt | `9170277c74e51b21d35df4dd82757a2cd0f5df39` |
+| [`orphan-visibility-safety`](orphan-visibility-safety/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `462bfdb` |
+| [`output-information-architecture`](output-information-architecture/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `462bfdb` |
+| [`machine-readable-audit`](machine-readable-audit/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `462bfdb` |

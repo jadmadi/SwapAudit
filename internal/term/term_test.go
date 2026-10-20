@@ -313,3 +313,107 @@ func TestPrintUpdateNotice(t *testing.T) {
 		t.Errorf("expected upgrade instruction, got %q", output)
 	}
 }
+
+func TestTruncateMiddleWidths(t *testing.T) {
+	SetAsciiMode(false)
+	SetColorEnabled(false)
+	names := []string{
+		"sila-cli-test-profile-1784434295",
+		"TestGoalsStatsFlagConflicts11102814295",
+		"chrome-devtools-mcp",
+		"plain-name",
+		"a",
+	}
+	for _, name := range names {
+		for w := 0; w <= 80; w++ {
+			got := TruncateMiddle(name, w)
+			if width := StrWidth(got); width > w {
+				t.Errorf("TruncateMiddle(%q, %d) width = %d, exceeds %d", name, w, width, w)
+			}
+			if StrWidth(name) <= w && got != name {
+				t.Errorf("TruncateMiddle(%q, %d) changed a string that fits", name, w)
+			}
+		}
+	}
+	if got := TruncateMiddle("sila-cli-test-profile-1784434295", 24); !strings.HasSuffix(got, "1784434295") {
+		t.Errorf("TruncateMiddle lost the numeric suffix: %q", got)
+	}
+	if got := TruncateMiddle("TestGoalsStatsFlagConflicts11102814295", 24); !strings.HasSuffix(got, "1102814295") {
+		t.Errorf("TruncateMiddle lost the numeric suffix: %q", got)
+	}
+}
+
+func TestTruncateMiddleANSI(t *testing.T) {
+	SetAsciiMode(false)
+	SetColorEnabled(true)
+	input := "\x1b[31mchrome-devtools-mcp-with-a-long-suffix\x1b[0m"
+	got := TruncateMiddle(input, 20)
+	if !strings.HasSuffix(got, "\x1b[0m") {
+		t.Errorf("ANSI output missing reset: %q", got)
+	}
+	if w := StrWidth(got); w > 20 {
+		t.Errorf("ANSI output width = %d, exceeds 20", w)
+	}
+}
+
+func TestFitColumnsAndTableWidth(t *testing.T) {
+	cols := []model.Col{
+		{Title: "Target / Command", Width: 10},
+		{Title: "Age", Width: 10, Right: true},
+		{Title: "Idle", Width: 12, Right: true},
+		{Title: "Size", Width: 10, Right: true},
+	}
+	for _, w := range []int{80, 100, 120} {
+		fitted := FitColumns(cols, 0, w)
+		if got := TableWidth(fitted); got != w {
+			t.Errorf("TableWidth(FitColumns(..., %d)) = %d", w, got)
+		}
+
+		old := os.Stdout
+		r, pw, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdout = pw
+		RenderTable(fitted, [][]string{{"some-long-name", "1d", "2h", "10.0 MB"}})
+		pw.Close()
+		os.Stdout = old
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		for i, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+			if got := StrWidth(line); got != w {
+				t.Errorf("width %d line %d = %d cells: %q", w, i, got, line)
+			}
+			if strings.HasSuffix(line, " ") {
+				t.Errorf("width %d line %d has trailing whitespace: %q", w, i, line)
+			}
+		}
+	}
+}
+
+func TestTableOverflow(t *testing.T) {
+	SetAsciiMode(true)
+	SetColorEnabled(false)
+	SetTermWidth(80)
+	defer func() {
+		SetTableOverflow(false)
+		SetTermWidth(100)
+	}()
+	cols := []model.Col{{Title: "Name", Width: 10}, {Title: "Size", Width: 10, Right: true}}
+	name := "a-very-long-name-that-does-not-fit-in-the-column"
+	SetTableOverflow(true)
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	RenderTable(cols, [][]string{{name, "1.0 MB"}})
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	if !strings.Contains(buf.String(), name) {
+		t.Errorf("overflow mode should preserve the full name:\n%s", buf.String())
+	}
+}

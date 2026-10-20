@@ -1,0 +1,341 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-19T22:30:00Z",
+  "host": {
+    "kernel_release": "6.8.0-test",
+    "uptime_seconds": 123456
+  },
+  "thresholds": {
+    "max_age_seconds": 43200,
+    "idle_threshold_seconds": 7200,
+    "orphan_cache_age_seconds": 3600
+  },
+  "system": {
+    "swap": {
+      "total_bytes": 10737418240,
+      "used_bytes": 5368709120,
+      "free_bytes": 5368709120
+    },
+    "ram": {
+      "total_bytes": 17179869184,
+      "used_bytes": 8589934592,
+      "available_bytes": 8589934592,
+      "definition": "used = total - available"
+    },
+    "tmpfs": {
+      "path": "/tmp",
+      "total_bytes": 21474836480,
+      "used_bytes": 10737418240,
+      "free_bytes": 10737418240,
+      "avail_bytes": 10737418240
+    }
+  },
+  "attribution": {
+    "swap": {
+      "total_bytes": 5368709120,
+      "attributed_bytes": 524288000,
+      "unattributed_bytes": 4844421120,
+      "overlap_bytes": 0,
+      "reasons": [
+        {
+          "reason": "kernel-or-shmem",
+          "bytes": 4844421120,
+          "count": 0
+        },
+        {
+          "reason": "zero-swap",
+          "bytes": 0,
+          "count": 3
+        }
+      ]
+    },
+    "tmpfs": {
+      "total_bytes": 10737418240,
+      "attributed_bytes": 471859200,
+      "unattributed_bytes": 10265559040,
+      "overlap_bytes": 0,
+      "reasons": [
+        {
+          "reason": "metadata-or-other",
+          "bytes": 10264510464,
+          "count": 0
+        },
+        {
+          "reason": "other-uid",
+          "bytes": 1048576,
+          "count": 1
+        }
+      ]
+    }
+  },
+  "reclaim": {
+    "tmpfs_bytes": 314572800,
+    "swap_bytes": 524288000,
+    "upper_bound": true,
+    "note": "tmpfs and swap pools may overlap; tmpfs pages may be swapped",
+    "cache_count": 1,
+    "process_count": 1
+  },
+  "population": {
+    "raw_items": 5,
+    "aggregated_shells": 0,
+    "aggregated_rows": 0,
+    "displayed": 0,
+    "hidden_by_limit": 0,
+    "hidden_by_size_filter": 0,
+    "cleanable": 2,
+    "protected": 3,
+    "processes": 200,
+    "processes_with_swap": 20,
+    "agents": 2,
+    "agents_with_swap": 1,
+    "agents_zero_swap": 1,
+    "agents_dormant": 1,
+    "agents_orphaned": 0,
+    "agents_parent_alive": 2,
+    "agents_idle_unknown": 0,
+    "agents_active": 1,
+    "vanished": 0,
+    "permission_denied": 0
+  },
+  "scan": {
+    "scanned_caches": 0,
+    "in_use_caches": 1,
+    "orphaned_caches": 1,
+    "recent_caches": 0,
+    "evidence_incomplete": 0,
+    "open_index_truncated": false,
+    "open_index_errors": 0,
+    "open_index_pids": 0,
+    "open_index_fds": 0,
+    "fallback_count": 0
+  },
+  "categories": [
+    {
+      "category": "dormant-agents",
+      "pool": "process-swap",
+      "entities": 1,
+      "attributed_bytes": 524288000,
+      "reclaimable_bytes": 524288000,
+      "share_of_attributed": 1,
+      "share_of_system": 0.09765625
+    },
+    {
+      "category": "abandoned-agents",
+      "pool": "process-swap",
+      "entities": 0,
+      "attributed_bytes": 0,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0,
+      "share_of_system": 0
+    },
+    {
+      "category": "desktop-daemons",
+      "pool": "process-swap",
+      "entities": 0,
+      "attributed_bytes": 0,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0,
+      "share_of_system": 0
+    },
+    {
+      "category": "active-apps",
+      "pool": "process-swap",
+      "entities": 1,
+      "attributed_bytes": 0,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0,
+      "share_of_system": 0
+    },
+    {
+      "category": "untouched-caches",
+      "pool": "tmpfs",
+      "entities": 1,
+      "attributed_bytes": 314572800,
+      "reclaimable_bytes": 314572800,
+      "share_of_attributed": 0.6666666666666666,
+      "share_of_system": 0.029296875
+    },
+    {
+      "category": "abandoned-runs",
+      "pool": "tmpfs",
+      "entities": 0,
+      "attributed_bytes": 0,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0,
+      "share_of_system": 0
+    },
+    {
+      "category": "orphaned-caches",
+      "pool": "tmpfs",
+      "entities": 1,
+      "attributed_bytes": 104857600,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0.2222222222222222,
+      "share_of_system": 0.009765625
+    },
+    {
+      "category": "in-use-caches",
+      "pool": "tmpfs",
+      "entities": 1,
+      "attributed_bytes": 52428800,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0.1111111111111111,
+      "share_of_system": 0.0048828125
+    },
+    {
+      "category": "recent-caches",
+      "pool": "tmpfs",
+      "entities": 0,
+      "attributed_bytes": 0,
+      "reclaimable_bytes": 0,
+      "share_of_attributed": 0,
+      "share_of_system": 0
+    }
+  ],
+  "groups": [],
+  "items": [
+    {
+      "kind": "process",
+      "id": "aaaa1111",
+      "pid": 101,
+      "start_ticks": 5000,
+      "uid": 1000,
+      "name": "agy",
+      "path": "",
+      "category": "dormant-agents",
+      "cleanable": true,
+      "agent": true,
+      "swap_bytes": 524288000,
+      "allocated_bytes": 0,
+      "apparent_bytes": 0,
+      "rss_bytes": 0,
+      "age_seconds": 172800,
+      "idle_seconds": 10800,
+      "idle_known": true,
+      "open_handles": 0,
+      "cwd_inside": false,
+      "mapped_inside": false,
+      "parent_pid": 1,
+      "parent_comm": "systemd",
+      "parent_alive": false,
+      "orphan_reason": "idle-threshold",
+      "tty_nr": 123,
+      "cgroup": "/user.slice/session-1.scope",
+      "evidence": "idle=3h",
+      "signal": "SIGTERM"
+    },
+    {
+      "kind": "cache",
+      "id": "cccc3333",
+      "pid": 0,
+      "start_ticks": 0,
+      "uid": 0,
+      "name": "go-build1234",
+      "path": "/tmp/go-build1234",
+      "category": "untouched-caches",
+      "cache_kind": "build",
+      "cleanable": true,
+      "agent": false,
+      "swap_bytes": 0,
+      "allocated_bytes": 314572800,
+      "apparent_bytes": 335544320,
+      "rss_bytes": 0,
+      "age_seconds": 172800,
+      "idle_seconds": 46800,
+      "idle_known": true,
+      "open_handles": 0,
+      "cwd_inside": false,
+      "mapped_inside": false,
+      "parent_pid": 0,
+      "parent_comm": "",
+      "parent_alive": false,
+      "tty_nr": 0,
+      "evidence": "idle=13h handles=0 kind=build"
+    },
+    {
+      "kind": "cache",
+      "id": "dddd4444",
+      "pid": 0,
+      "start_ticks": 0,
+      "uid": 0,
+      "name": "orphan-cache",
+      "path": "/tmp/orphan-cache",
+      "category": "orphaned-caches",
+      "cache_kind": "build",
+      "cleanable": false,
+      "agent": false,
+      "swap_bytes": 0,
+      "allocated_bytes": 104857600,
+      "apparent_bytes": 104857600,
+      "rss_bytes": 0,
+      "age_seconds": 172800,
+      "idle_seconds": 7200,
+      "idle_known": true,
+      "open_handles": 0,
+      "cwd_inside": false,
+      "mapped_inside": false,
+      "parent_pid": 0,
+      "parent_comm": "",
+      "parent_alive": false,
+      "tty_nr": 0,
+      "evidence": "idle=2h handles=0 kind=build; use --clean-orphaned-caches"
+    },
+    {
+      "kind": "cache",
+      "id": "eeee5555",
+      "pid": 0,
+      "start_ticks": 0,
+      "uid": 0,
+      "name": "in-use-cache",
+      "path": "/tmp/in-use-cache",
+      "category": "in-use-caches",
+      "cache_kind": "generic",
+      "cleanable": false,
+      "agent": false,
+      "swap_bytes": 0,
+      "allocated_bytes": 52428800,
+      "apparent_bytes": 0,
+      "rss_bytes": 0,
+      "age_seconds": 3600,
+      "idle_seconds": 60,
+      "idle_known": true,
+      "open_handles": 2,
+      "cwd_inside": false,
+      "mapped_inside": false,
+      "parent_pid": 0,
+      "parent_comm": "",
+      "parent_alive": false,
+      "tty_nr": 0,
+      "evidence": "idle=1m handles=2"
+    },
+    {
+      "kind": "process",
+      "id": "bbbb2222",
+      "pid": 102,
+      "start_ticks": 6000,
+      "uid": 1000,
+      "name": "zero-agent",
+      "path": "",
+      "category": "active-apps",
+      "cleanable": false,
+      "agent": true,
+      "swap_bytes": 0,
+      "allocated_bytes": 0,
+      "apparent_bytes": 0,
+      "rss_bytes": 0,
+      "age_seconds": 3600,
+      "idle_seconds": 600,
+      "idle_known": true,
+      "open_handles": 0,
+      "cwd_inside": false,
+      "mapped_inside": false,
+      "parent_pid": 1,
+      "parent_comm": "systemd",
+      "parent_alive": false,
+      "tty_nr": 0,
+      "evidence": "idle=10m"
+    }
+  ],
+  "cleanup": null
+}

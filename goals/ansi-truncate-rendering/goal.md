@@ -2,8 +2,8 @@
 
 ## Chain of Custody (Isnad)
 - **Registered By**: Pending Registration
-- **Spec Audited By**: Pending Spec Audit
-- **Implemented By**: Pending Implementation
+- **Spec Audited By**: CommandCode, 2026-10-20 (acceptance criteria re-checked against tests and evidence)
+- **Implemented By**: CommandCode, 2026-10-20 (see `evidence.md`)
 - **Mystery Audited By**: @mystery-auditor | Report: `receipt_ansi-truncate-rendering_1792402811`
 
 

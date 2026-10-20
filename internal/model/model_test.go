@@ -19,3 +19,22 @@ func TestItemSize(t *testing.T) {
 		t.Errorf("ItemSize(procItem) = %d, want %d", sz, 2048*1024)
 	}
 }
+
+func TestShortID(t *testing.T) {
+	a := SwapItem{Path: "/tmp/go-build123"}
+	b := SwapItem{Path: "/tmp/go-build123"}
+	c := SwapItem{Path: "/tmp/go-build456"}
+	d := SwapItem{PID: 42, StartTicks: 100}
+	if ShortID(a) != ShortID(b) {
+		t.Errorf("ShortID is not deterministic")
+	}
+	if ShortID(a) == ShortID(c) {
+		t.Errorf("ShortID collision for different paths")
+	}
+	if len(ShortID(a)) != 8 {
+		t.Errorf("ShortID length = %d, want 8", len(ShortID(a)))
+	}
+	if ShortID(d) == ShortID(a) {
+		t.Errorf("PID-based and path-based IDs should differ")
+	}
+}
