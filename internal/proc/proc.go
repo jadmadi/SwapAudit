@@ -68,8 +68,9 @@ func ReadSystemSwap() model.SystemSwap {
 	var stat syscall.Statfs_t
 	if err := syscall.Statfs("/tmp", &stat); err == nil {
 		s.TmpfsSize = int64(stat.Blocks) * int64(stat.Bsize)
-		free := int64(stat.Bfree) * int64(stat.Bsize)
-		s.TmpfsUsed = s.TmpfsSize - free
+		s.TmpfsFree = int64(stat.Bfree) * int64(stat.Bsize)
+		s.TmpfsAvail = int64(stat.Bavail) * int64(stat.Bsize)
+		s.TmpfsUsed = s.TmpfsSize - s.TmpfsFree
 	}
 
 	return s
@@ -353,4 +354,172 @@ func ReadProcessLastActive(pid int, uptimeMs float64) time.Duration {
 		}
 	}
 	return -1
+}
+
+// ProcessSnapshot is the evidence collected for one process during a full scan.
+type ProcessSnapshot struct {
+	PID         int
+	PPID        int
+	StartTicks  int64
+	UID         uint32
+	UIDKnown    bool
+	Comm        string
+	Argv        []string
+	VmSwap      int64
+	RSS         int64
+	Age         time.Duration
+	Idle        time.Duration
+	IdleKnown   bool
+	Orphan      OrphanEvidence
+	Orphaned    bool
+	ParentAlive bool
+	ParentComm  string
+	Cgroup      string
+	TTYNr       int64
+}
+
+// ProcessScanResult is the outcome of a full /proc scan.
+type ProcessScanResult struct {
+	Processes        []ProcessSnapshot
+	Total            int
+	Accessible       int
+	Vanished         int
+	PermissionDenied int
+}
+
+// ScanProcesses reads every accessible numeric /proc entry. It never filters by
+// VmSwap; zero-swap processes are preserved for agent visibility.
+func ScanProcesses(now time.Time, uptimeSec float64) ProcessScanResult {
+	var result ProcessScanResult
+	uptimeMs := uptimeSec * 1000.0
+	bootTime := now.Add(-time.Duration(uptimeSec * float64(time.Second)))
+
+	entries, err := os.ReadDir("/proc")
+	if err != nil {
+		result.PermissionDenied++
+		return result
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		pid, err := strconv.Atoi(entry.Name())
+		if err != nil || pid == os.Getpid() {
+			continue
+		}
+		result.Total++
+
+		f, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
+		if err != nil {
+			if _, statErr := os.Stat(fmt.Sprintf("/proc/%d", pid)); statErr != nil {
+				result.Vanished++
+			} else {
+				result.PermissionDenied++
+			}
+			continue
+		}
+		swapBytes, ppid, rss, uid, uidKnown, ok := parseProcStatusFull(f)
+		f.Close()
+		if !ok {
+			if _, statErr := os.Stat(fmt.Sprintf("/proc/%d", pid)); statErr != nil {
+				result.Vanished++
+			} else {
+				result.PermissionDenied++
+			}
+			continue
+		}
+
+		comm := ReadComm(pid)
+		argv := ReadCmdlineArgs(pid)
+		startTicks := ReadStartTicks(pid)
+		if startTicks == 0 {
+			result.Vanished++
+			continue
+		}
+		lastActive := ReadProcessLastActive(pid, uptimeMs)
+		idleKnown := lastActive >= 0
+		evidence, orphaned := ClassifyOrphan(pid, ppid)
+
+		result.Accessible++
+		result.Processes = append(result.Processes, ProcessSnapshot{
+			PID:         pid,
+			PPID:        ppid,
+			StartTicks:  startTicks,
+			UID:         uid,
+			UIDKnown:    uidKnown,
+			Comm:        comm,
+			Argv:        argv,
+			VmSwap:      swapBytes,
+			RSS:         rss,
+			Age:         CalcProcessAge(startTicks, bootTime),
+			Idle:        lastActive,
+			IdleKnown:   idleKnown,
+			Orphan:      evidence,
+			Orphaned:    orphaned,
+			ParentAlive: evidence.ParentComm != "",
+			ParentComm:  evidence.ParentComm,
+			Cgroup:      evidence.Cgroup,
+			TTYNr:       evidence.TTYNr,
+		})
+	}
+	return result
+}
+
+// ParseParentInfo reads PPID and parent comm, and reports whether the parent is alive.
+func ParseParentInfo(pid, ppid int) (int, string, bool) {
+	parentAlive := false
+	parentComm := ""
+	if ppid > 1 {
+		if _, err := os.Stat(fmt.Sprintf("/proc/%d", ppid)); err == nil {
+			parentAlive = true
+			parentComm = ReadComm(ppid)
+		}
+	}
+	return ppid, parentComm, parentAlive
+}
+
+// ReadParentInfo reads the live parent state for pid from /proc.
+func ReadParentInfo(pid int) (ppid int, comm string, alive bool) {
+	_, ppid = ReadProcStatus(pid)
+	return ParseParentInfo(pid, ppid)
+}
+
+func parseProcStatusFull(r io.Reader) (swapBytes int64, ppid int, rss int64, uid uint32, uidKnown, ok bool) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case strings.HasPrefix(line, "VmSwap:"):
+			swapBytes = parseStatusKb(line)
+		case strings.HasPrefix(line, "VmRSS:"):
+			rss = parseStatusKb(line)
+		case strings.HasPrefix(line, "PPid:"):
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				ppid, _ = strconv.Atoi(fields[1])
+			}
+		case strings.HasPrefix(line, "Uid:"):
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				if val, err := strconv.ParseUint(fields[1], 10, 32); err == nil {
+					uid = uint32(val)
+					uidKnown = true
+				}
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, 0, 0, 0, false, false
+	}
+	return swapBytes, ppid, rss, uid, uidKnown, true
+}
+
+func parseStatusKb(line string) int64 {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return 0
+	}
+	val, _ := strconv.ParseInt(fields[1], 10, 64)
+	return val * 1024
 }

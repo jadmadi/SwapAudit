@@ -342,3 +342,57 @@ func TestReadProcessLastActiveMalformedSched(t *testing.T) {
 		})
 	}
 }
+
+func TestParseProcStatusFull(t *testing.T) {
+	content := `Name:	test
+PPid:	42
+VmSwap:	    2048 kB
+VmRSS:	    4096 kB
+Uid:	1000	1000	1000	1000
+`
+	swapBytes, ppid, rss, uid, uidKnown, ok := parseProcStatusFull(strings.NewReader(content))
+	if !ok {
+		t.Fatal("parseProcStatusFull returned ok=false")
+	}
+	if swapBytes != 2048*1024 || ppid != 42 || rss != 4096*1024 {
+		t.Errorf("values = (%d, %d, %d), want (%d, 42, %d)", swapBytes, ppid, rss, 2048*1024, 4096*1024)
+	}
+	if !uidKnown || uid != 1000 {
+		t.Errorf("uid = (%v, %d), want (true, 1000)", uidKnown, uid)
+	}
+}
+
+func TestScanProcessesIncludesZeroSwap(t *testing.T) {
+	result := ScanProcesses(time.Now(), ReadUptime())
+	if result.Accessible == 0 || len(result.Processes) == 0 {
+		t.Fatalf("ScanProcesses returned no accessible processes: %+v", result)
+	}
+	zeroSwap := 0
+	for _, p := range result.Processes {
+		if p.PID == os.Getpid() {
+			t.Errorf("ScanProcesses included the auditor PID %d", p.PID)
+		}
+		if p.VmSwap == 0 {
+			zeroSwap++
+		}
+		if p.IdleKnown != (p.Idle >= 0) {
+			t.Errorf("PID %d IdleKnown=%v but Idle=%v", p.PID, p.IdleKnown, p.Idle)
+		}
+	}
+	if zeroSwap == 0 {
+		t.Errorf("expected at least one zero-swap process to be retained")
+	}
+}
+
+func TestReadParentInfoCurrent(t *testing.T) {
+	ppid, comm, alive := ReadParentInfo(os.Getpid())
+	if ppid <= 0 {
+		t.Errorf("ppid = %d, want > 0", ppid)
+	}
+	if !alive {
+		t.Errorf("expected the test parent to be alive")
+	}
+	if comm == "" {
+		t.Errorf("expected a parent comm")
+	}
+}

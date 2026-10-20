@@ -1,5 +1,7 @@
 # Evidence: security-contact-consolidation
 
+Verdict: PASS
+
 Date: 2026-10-19
 Decision record: `docs/decisions/0002-security-contact.md`
 Canonical email: `contact@jadmadi.net`

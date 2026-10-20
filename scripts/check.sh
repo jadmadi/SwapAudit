@@ -99,8 +99,8 @@ cd "${ROOT_DIR}"
 # -----------------------------------------------------------------------------
 echo -e "${BOLD}1. Running Diff Sentry (secrets, debug prints, conflict markers)...${RESET}"
 
-STAGED_DIFF=$(git diff --cached -- . ':!scripts/check.sh' 2>/dev/null || true)
-UNSTAGED_DIFF=$(git diff -- . ':!scripts/check.sh' 2>/dev/null || true)
+STAGED_DIFF=$(git diff --cached -- . ':(exclude)**/check.sh' 2>/dev/null || true)
+UNSTAGED_DIFF=$(git diff -- . ':(exclude)**/check.sh' 2>/dev/null || true)
 COMBINED_DIFF="${STAGED_DIFF}${UNSTAGED_DIFF}"
 
 if [[ -n "${COMBINED_DIFF}" ]]; then
@@ -123,13 +123,35 @@ echo -e "   ${GREEN}✔ Diff sentry clean.${RESET}"
 # -----------------------------------------------------------------------------
 echo -e "\n${BOLD}1b. Running Claims Sentry (unverified destructive claims)...${RESET}"
 CLAIM_HITS=$(grep -RInE 'Conversations stay preserved|conversations stay preserved|100% safe|guaranteed safe' \
-    --exclude-dir=.git --exclude-dir=goals --exclude-dir=business-reviews --exclude='check.sh' . 2>/dev/null || true)
+    --exclude-dir=.git --exclude-dir=goals --exclude-dir=business-reviews --exclude-dir=reviews --exclude-dir=rm \
+    --exclude='check.sh' . 2>/dev/null || true)
 if [[ -n "${CLAIM_HITS}" ]]; then
     echo -e "   ${RED}✖ Error: unverified destructive claim found:${RESET}"
     echo "${CLAIM_HITS}" | sed 's/^/     /'
     exit 1
 fi
 echo -e "   ${GREEN}✔ Claims sentry clean.${RESET}"
+
+# -----------------------------------------------------------------------------
+# 1b2. Label Sentry: retired metric names
+# -----------------------------------------------------------------------------
+echo -e "\n${BOLD}1b2. Running Label Sentry (retired metric names)...${RESET}"
+RAM_LABEL_HITS=$(grep -RIn "Process Swap [(]RAM[)]" \
+    --exclude-dir=.git --exclude-dir=goals --exclude-dir=business-reviews \
+    --exclude-dir=reviews --exclude-dir=rm \
+    --exclude='CHANGELOG.md' --exclude='check.sh' --exclude='*_test.go' . 2>/dev/null || true)
+ACTIVE_LABEL_HITS=$(grep -RIn "active-caches" internal --include='*.go' 2>/dev/null || true)
+if [[ -n "${RAM_LABEL_HITS}" ]]; then
+    echo -e "   ${RED}✖ Error: retired process-swap RAM label found:${RESET}"
+    echo "${RAM_LABEL_HITS}" | sed 's/^/     /'
+    exit 1
+fi
+if [[ -n "${ACTIVE_LABEL_HITS}" ]]; then
+    echo -e "   ${RED}✖ Error: retired category label 'active-caches' found in Go source:${RESET}"
+    echo "${ACTIVE_LABEL_HITS}" | sed 's/^/     /'
+    exit 1
+fi
+echo -e "   ${GREEN}✔ Label sentry clean.${RESET}"
 
 # -----------------------------------------------------------------------------
 # 1c. Privacy Sentry: opt-in network policy

@@ -14,10 +14,19 @@ import (
 	"github.com/jadmadi/swapaudit/internal/model"
 )
 
+const (
+	// PressureAmber is the swap/RAM usage percentage where the meter turns amber.
+	PressureAmber = 50.0
+	// PressureRed is the swap/RAM usage percentage where the meter turns red.
+	PressureRed = 80.0
+)
+
 var (
-	termWidth    = 100
-	colorEnabled = true
-	asciiMode    = false
+	termWidth       = 100
+	colorEnabled    = true
+	asciiMode       = false
+	overflowEnabled = false
+	widthOverride   = false
 )
 
 // GetTerminalWidth queries stdout for the current window width and clamps it between 80 and 120.
@@ -47,7 +56,9 @@ func GetTerminalWidth() int {
 
 // InitTerminal configures terminal width, color activation, and ASCII fallback.
 func InitTerminal(noColorFlag, asciiFlag bool) {
-	termWidth = GetTerminalWidth()
+	if !widthOverride {
+		termWidth = GetTerminalWidth()
+	}
 
 	if asciiFlag {
 		asciiMode = true
@@ -74,6 +85,12 @@ func InitTerminal(noColorFlag, asciiFlag bool) {
 // SetTermWidth overrides the terminal width (intended for tests).
 func SetTermWidth(w int) {
 	termWidth = w
+	widthOverride = true
+}
+
+// ResetTermWidthOverride restores ioctl-based width discovery.
+func ResetTermWidthOverride() {
+	widthOverride = false
 }
 
 // TermWidth returns the active terminal width.
@@ -91,12 +108,37 @@ func SetColorEnabled(enabled bool) {
 	colorEnabled = enabled
 }
 
+// SetTableOverflow allows table cells and lines to exceed the terminal width.
+// It is used only by --wide/--no-truncate.
+func SetTableOverflow(enabled bool) {
+	overflowEnabled = enabled
+}
+
+const escapeByte = byte(0x1b)
+
+// ansi builds an escape sequence from its numeric code. Centralizing the
+// constructor keeps every caller behind the colorEnabled guard and avoids raw
+// escape literals outside this function.
+func ansi(code string) string {
+	return string([]byte{escapeByte}) + "[" + code
+}
+
+var (
+	ansiReset  = ansi("0m")
+	ansiBold   = ansi("1m")
+	ansiDim    = ansi("2m")
+	ansiRed    = ansi("31m")
+	ansiGreen  = ansi("32m")
+	ansiYellow = ansi("33m")
+	ansiCyan   = ansi("36m")
+)
+
 // Bold formats string with ANSI bold.
 func Bold(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[1m" + s + "\x1b[0m"
+	return ansiBold + s + ansiReset
 }
 
 // Dim formats string with ANSI dim.
@@ -104,7 +146,7 @@ func Dim(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[2m" + s + "\x1b[0m"
+	return ansiDim + s + ansiReset
 }
 
 // Red formats string with ANSI red.
@@ -112,7 +154,7 @@ func Red(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[31m" + s + "\x1b[0m"
+	return ansiRed + s + ansiReset
 }
 
 // Green formats string with ANSI green.
@@ -120,7 +162,7 @@ func Green(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[32m" + s + "\x1b[0m"
+	return ansiGreen + s + ansiReset
 }
 
 // Yellow formats string with ANSI yellow.
@@ -128,7 +170,7 @@ func Yellow(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[33m" + s + "\x1b[0m"
+	return ansiYellow + s + ansiReset
 }
 
 // Cyan formats string with ANSI cyan.
@@ -136,7 +178,7 @@ func Cyan(s string) string {
 	if !colorEnabled {
 		return s
 	}
-	return "\x1b[36m" + s + "\x1b[0m"
+	return ansiCyan + s + ansiReset
 }
 
 // GlyphBoxTopLeft returns the top-left box border character.
@@ -350,12 +392,213 @@ func Truncate(s string, w int) string {
 
 	b.WriteString(ell)
 	if hasEsc {
-		b.WriteString("\x1b[0m")
+		b.WriteString(ansiReset)
 	}
 	return b.String()
 }
 
-// FormatBytes formats a byte count into a human-readable string.
+// TruncateMiddle shortens s to w visible cells, preserving both the beginning
+// and the distinguishing suffix. ANSI escape sequences are preserved.
+func TruncateMiddle(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	if StrWidth(s) <= w {
+		return s
+	}
+	ell := GlyphEllipsis()
+	ellW := StrWidth(ell)
+	if w <= ellW {
+		r := []rune(ell)
+		if w <= len(r) {
+			return string(r[:w])
+		}
+		return ell
+	}
+
+	tokens := tokenizeVisible(s)
+	tailW := w / 3
+	if tailW < 4 {
+		tailW = 4
+	}
+	if tailW > w-ellW-1 {
+		tailW = w - ellW - 1
+	}
+	// Preserve a numeric/hash suffix in full when it fits.
+	suffix := trailingSuffixWidth(tokens)
+	if suffix > tailW {
+		if maxTail := w - ellW - 1; suffix <= maxTail {
+			tailW = suffix
+		} else {
+			tailW = maxTail
+		}
+	}
+	headW := w - ellW - tailW
+	if headW < 1 {
+		headW = 1
+		tailW = w - ellW - headW
+	}
+
+	var head []visibleToken
+	used := 0
+	for _, t := range tokens {
+		if t.w == 0 {
+			head = append(head, t)
+			continue
+		}
+		if used+t.w > headW {
+			break
+		}
+		head = append(head, t)
+		used += t.w
+	}
+	var tail []visibleToken
+	used = 0
+	for i := len(tokens) - 1; i >= 0; i-- {
+		t := tokens[i]
+		if t.w == 0 {
+			tail = append([]visibleToken{t}, tail...)
+			continue
+		}
+		if used+t.w > tailW {
+			break
+		}
+		tail = append([]visibleToken{t}, tail...)
+		used += t.w
+	}
+
+	var b strings.Builder
+	hasEsc := false
+	for _, t := range head {
+		if t.esc != "" {
+			hasEsc = true
+		}
+		b.WriteString(t.text())
+	}
+	if s := strings.TrimRight(b.String(), " "); len(s) != 0 {
+		b.Reset()
+		b.WriteString(s)
+	}
+	b.WriteString(ell)
+	for _, t := range tail {
+		if t.esc != "" {
+			hasEsc = true
+		}
+		b.WriteString(t.text())
+	}
+	if hasEsc {
+		b.WriteString(ansiReset)
+	}
+	return b.String()
+}
+
+// TruncateMiddleANSI is an explicit alias for TruncateMiddle, which is ANSI-aware.
+func TruncateMiddleANSI(s string, w int) string {
+	return TruncateMiddle(s, w)
+}
+
+type visibleToken struct {
+	esc string
+	r   rune
+	w   int
+}
+
+func (t visibleToken) text() string {
+	if t.esc != "" {
+		return t.esc
+	}
+	return string(t.r)
+}
+
+func tokenizeVisible(s string) []visibleToken {
+	var tokens []visibleToken
+	for i := 0; i < len(s); {
+		if s[i] == 0x1b {
+			start := i
+			i++
+			for i < len(s) {
+				c := s[i]
+				i++
+				if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') {
+					break
+				}
+			}
+			tokens = append(tokens, visibleToken{esc: s[start:i]})
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		i += size
+		w := 1
+		if r == 0xFE0F {
+			w = 0
+		} else if r >= 0x1F000 || (r >= 0x2600 && r <= 0x27BF && r != 0x2794) || (r >= 0x2B50 && r <= 0x2B55) {
+			w = 2
+		}
+		tokens = append(tokens, visibleToken{r: r, w: w})
+	}
+	return tokens
+}
+
+func trailingSuffixWidth(tokens []visibleToken) int {
+	width := 0
+	seenDigit := false
+	for i := len(tokens) - 1; i >= 0; i-- {
+		t := tokens[i]
+		if t.w == 0 {
+			continue
+		}
+		c := t.r
+		isDigit := c >= '0' && c <= '9'
+		isHash := (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+		if !isDigit && !isHash {
+			break
+		}
+		if isDigit {
+			seenDigit = true
+		}
+		width += t.w
+	}
+	if !seenDigit || width < 4 {
+		return 0
+	}
+	return width
+}
+
+// TableWidth returns the rendered visible width of a table with the given columns.
+func TableWidth(cols []model.Col) int {
+	if len(cols) == 0 {
+		return 0
+	}
+	total := 2
+	for i, c := range cols {
+		total += c.Width
+		if i > 0 {
+			total += 3
+		}
+	}
+	return total
+}
+
+// FitColumns returns a copy of cols whose flexible column is widened or
+// narrowed so the rendered table is exactly w columns when possible.
+func FitColumns(cols []model.Col, flexible, w int) []model.Col {
+	out := append([]model.Col(nil), cols...)
+	if flexible < 0 || flexible >= len(out) || len(out) == 0 {
+		return out
+	}
+	fixed := 2 + 3*(len(out)-1)
+	for i, c := range out {
+		if i != flexible {
+			fixed += c.Width
+		}
+	}
+	width := w - fixed
+	if width < 8 {
+		width = 8
+	}
+	out[flexible].Width = width
+	return out
+}
 func FormatBytes(b int64) string {
 	const unit = 1024
 	if b < unit {
@@ -407,12 +650,18 @@ func RenderMeterBar(percent float64, width int) string {
 	}
 	empty := width - filled
 	rawBar := "[" + strings.Repeat(GlyphBarFilled(), filled) + strings.Repeat(GlyphBarEmpty(), empty) + "]"
-	if percent < 50.0 {
+	if percent < PressureAmber {
 		return Green(rawBar)
-	} else if percent < 80.0 {
+	} else if percent < PressureRed {
 		return Yellow(rawBar)
 	}
 	return Red(rawBar)
+}
+
+// PressureLegend describes the meter color thresholds.
+func PressureLegend() string {
+	return fmt.Sprintf("Pressure: green <%d%% · amber %d–%d%% · red ≥%d%%",
+		int(PressureAmber), int(PressureAmber), int(PressureRed)-1, int(PressureRed))
 }
 
 // RenderShareMiniBar draws a compact meter bar followed by percentage text.
@@ -421,16 +670,21 @@ func RenderShareMiniBar(pct float64, width int) string {
 }
 
 // RenderTable outputs a formatted ASCII or Unicode table matching column width specifications.
+// The final column is always right-aligned so no rendered line carries trailing whitespace.
 func RenderTable(cols []model.Col, rows [][]string) {
 	if len(cols) == 0 {
 		return
 	}
+	last := len(cols) - 1
+	alignRight := func(i int, c model.Col) bool {
+		return c.Right || i == last
+	}
 
 	var headerParts []string
-	for _, c := range cols {
+	for i, c := range cols {
 		title := c.Title
 		tw := StrWidth(title)
-		if tw > c.Width {
+		if tw > c.Width && !overflowEnabled {
 			title = Truncate(title, c.Width)
 			tw = StrWidth(title)
 		}
@@ -438,7 +692,7 @@ func RenderTable(cols []model.Col, rows [][]string) {
 		if pad < 0 {
 			pad = 0
 		}
-		if c.Right {
+		if alignRight(i, c) {
 			headerParts = append(headerParts, strings.Repeat(" ", pad)+title)
 		} else {
 			headerParts = append(headerParts, title+strings.Repeat(" ", pad))
@@ -452,13 +706,7 @@ func RenderTable(cols []model.Col, rows [][]string) {
 	}
 	fmt.Printf("  %s\n", strings.Join(sepParts, "-+-"))
 
-	totalWidth := 0
-	for i, c := range cols {
-		totalWidth += c.Width
-		if i > 0 {
-			totalWidth += 3
-		}
-	}
+	totalWidth := TableWidth(cols)
 
 	for _, r := range rows {
 		isSectionHeader := len(r) > 1 && r[0] != ""
@@ -472,11 +720,15 @@ func RenderTable(cols []model.Col, rows [][]string) {
 		}
 		if isSectionHeader {
 			vw := StrWidth(r[0])
-			pad := totalWidth - vw
+			pad := totalWidth - 2 - vw - 1
 			if pad < 0 {
 				pad = 0
 			}
-			fmt.Printf("  %s%s\n", r[0], strings.Repeat(" ", pad))
+			if pad > 0 {
+				fmt.Printf("  %s %s\n", r[0], strings.Repeat(GlyphBoxHoriz(), pad))
+			} else {
+				fmt.Printf("  %s\n", r[0])
+			}
 			continue
 		}
 
@@ -487,7 +739,7 @@ func RenderTable(cols []model.Col, rows [][]string) {
 				val = r[i]
 			}
 			vw := StrWidth(val)
-			if vw > c.Width {
+			if vw > c.Width && !overflowEnabled {
 				val = Truncate(val, c.Width)
 				vw = StrWidth(val)
 			}
@@ -495,7 +747,7 @@ func RenderTable(cols []model.Col, rows [][]string) {
 			if pad < 0 {
 				pad = 0
 			}
-			if c.Right {
+			if alignRight(i, c) {
 				rowParts = append(rowParts, strings.Repeat(" ", pad)+val)
 			} else {
 				rowParts = append(rowParts, val+strings.Repeat(" ", pad))

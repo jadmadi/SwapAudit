@@ -22,7 +22,7 @@
 - [x] Add `.gitignore` entries for binaries, dist, coverage, claims, and local state.
 - [x] `git add` and commit as `chore: import swapaudit source`.
 - [x] Audit `git ls-files` against the include/exclude list; inspect the full file list once.
-- [x] Run `git grep -nE '(/home/jad|/Users/|BEGIN.*PRIVATE KEY|ghp_|sk-ant-|AKIA)'` and confirm no secrets/local paths.
+- [x] Search the tree for local home paths, private-key headers, GitHub tokens, Anthropic keys, and AWS access keys; confirm no secrets or local paths.
 - [x] Verify `go test -race ./...` and `go build ./cmd/swapaudit` in the clean repo.
 
 ### Phase 3 — Fix asset naming and release metadata

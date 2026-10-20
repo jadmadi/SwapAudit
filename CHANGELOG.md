@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `internal/report` accounting model with exact-byte attribution, explicit `unattributed`/`overlap` residuals, per-pool reclaim, category shares, and population counts.
+- Allocated-block cache sizing (`Stat_t.Blocks * 512`); apparent size is retained for JSON and diagnostics.
+- Cache liveness classification: `/proc` open-handle/cwd/mapping index, `in-use-caches`, `recent-caches`, and opt-in `orphaned-caches`.
+- `--orphan-cache-age`, `--clean-orphaned-caches`, `--include-orphaned-caches`, `--allow-generic-caches`, and `--explain-caches`.
+- Full process scan with zero-swap agent visibility, `AgentPopulation`, `--explain-agents`, and `--allow-live-parent`.
+- Parent-liveness, orphan-evidence, idle-evidence, UID, and start-ticks rechecks immediately before `SIGTERM`; the signal is printed in dry-run and live output.
+- One-line verdict, middle truncation with suffix preservation, short IDs, pattern grouping, `--expand`, `--collapse`, `--no-group`, and `--wide`/`--no-truncate`.
+- Versioned `--json` audit and cleanup contract (`schema_version: 1`) with golden and determinism tests.
+- Exit-code contract: `0` success, `1` runtime, `2` usage, `3` cleanup partial failure.
+- Non-interactive cleanup guard: cleanup without `--dry-run`/`--yes` on a non-TTY stdin exits `2`.
+- `docs/metrics.md`, `docs/cache-liveness.md`, `docs/output-layout.md`, and `docs/json-schema.md`.
+- Label sentry for retired metric names.
+
+### Changed
+- `active-caches` is now `recent-caches`; it never claimed liveness, only recency.
+- `Process Swap (RAM)` is now `Process swap (VmSwap)`; `/tmp Caches (tmpfs)` is now `/tmp allocated (tmpfs)`.
+- The Actionable and Protected tables are disjoint; cleanable rows appear exactly once.
+- `--all` disables shell aggregation, grouping, and the 10 MB filter; `--limit 0` means unlimited.
+- Reclaimable bytes are shown per pool (`tmpfs` and `swap`); a combined figure carries `upper bound; pools may overlap`.
+- `--clean-all` still excludes orphaned agents and now also excludes orphaned caches.
+- Non-TTY cleanup behavior is explicit instead of silently declining every group.
+
+### Fixed
+- Header totals no longer disagree with category sums; every residual is rendered.
+- Attributed bytes exceeding the system total produce `overlap`, never a negative residual.
+- Prune footers no longer count skipped targets as hidden; hidden bytes and counts match.
+- `abandoned-agents` and `orphaned-caches` rows render at zero instead of disappearing.
+- Zero-swap orphan/dormant agents are no longer invisible to the audit and cleanup path.
+- Cache sizes no longer overstate reclaimable bytes for sparse files.
+- Shared-prefix cleanup targets keep their distinguishing suffix.
+
+### Added (previous)
 - `--all-users` opt-in for signaling processes owned by another UID.
 - `--include-orphaned` opt-in for including orphaned-agent cleanup with `--clean-all`.
 - `--check-updates` and `SWAPAUDIT_CHECK_UPDATES=1` opt-in for one explicit release check.

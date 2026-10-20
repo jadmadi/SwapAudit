@@ -322,19 +322,24 @@ func TestResolveCleanupFlags(t *testing.T) {
 		dormant   bool
 		orphaned  bool
 		include   bool
+		orphCache bool
+		includeOC bool
 		want      cleaner.CleanupFlags
 	}{
-		{"none", false, false, false, false, false, false, cleaner.CleanupFlags{}},
-		{"explicit untouched", false, true, false, false, false, false, cleaner.CleanupFlags{Untouched: true}},
-		{"clean all excludes orphan", true, false, false, false, false, false, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true}},
-		{"clean all includes orphan on opt-in", true, false, false, false, false, true, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true, Orphaned: true}},
-		{"explicit orphan", false, false, false, false, true, false, cleaner.CleanupFlags{Orphaned: true}},
-		{"include only is inert", false, false, false, false, false, true, cleaner.CleanupFlags{}},
+		{"none", false, false, false, false, false, false, false, false, cleaner.CleanupFlags{}},
+		{"explicit untouched", false, true, false, false, false, false, false, false, cleaner.CleanupFlags{Untouched: true}},
+		{"clean all excludes orphan", true, false, false, false, false, false, false, false, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true}},
+		{"clean all includes orphan on opt-in", true, false, false, false, false, true, false, false, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true, Orphaned: true}},
+		{"explicit orphan", false, false, false, false, true, false, false, false, cleaner.CleanupFlags{Orphaned: true}},
+		{"include only is inert", false, false, false, false, false, true, false, false, cleaner.CleanupFlags{}},
+		{"explicit orphan cache", false, false, false, false, false, false, true, false, cleaner.CleanupFlags{OrphanedCaches: true}},
+		{"include orphan cache with clean all", true, false, false, false, false, false, false, true, cleaner.CleanupFlags{Untouched: true, Abandoned: true, Dormant: true, OrphanedCaches: true}},
+		{"include orphan cache without clean all is inert", false, false, false, false, false, false, false, true, cleaner.CleanupFlags{}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ResolveCleanupFlags(tt.cleanAll, tt.untouched, tt.abandoned, tt.dormant, tt.orphaned, tt.include)
+			got := ResolveCleanupFlags(tt.cleanAll, tt.untouched, tt.abandoned, tt.dormant, tt.orphaned, tt.include, tt.orphCache, tt.includeOC)
 			if got != tt.want {
 				t.Errorf("ResolveCleanupFlags() = %+v, want %+v", got, tt.want)
 			}

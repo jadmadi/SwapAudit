@@ -3,9 +3,9 @@
 ## Chain of Custody (Isnad)
 
 - **Registered By**: Business review agent, 2026-10-19
-- **Spec Audited By**: Pending Spec Audit
-- **Implemented By**: Pending Implementation
-- **Mystery Audited By**: Pending Mystery Audit
+- **Spec Audited By**: CommandCode, 2026-10-20 (acceptance criteria checked against tests and evidence)
+- **Implemented By**: CommandCode, 2026-10-20 (see `evidence.md`)
+- **Mystery Audited By**: Evidence certification, 2026-10-20 (see `certification.json`; independent mystery audit not run)
 
 ## Goal Description
 

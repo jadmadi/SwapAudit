@@ -104,7 +104,7 @@ func TestScanTmpDirectoriesIn(t *testing.T) {
 		if it.Name == "active-cache" {
 			foundActive = true
 			if it.Category != model.CatActiveCache || it.Cleanable {
-				t.Errorf("active-cache category = %v, cleanable = %v, want active-caches, false", it.Category, it.Cleanable)
+				t.Errorf("active-cache category = %v, cleanable = %v, want recent-caches, false", it.Category, it.Cleanable)
 			}
 		}
 	}

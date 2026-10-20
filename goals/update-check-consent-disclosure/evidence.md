@@ -1,5 +1,7 @@
 # Evidence: update-check-consent-disclosure
 
+Verdict: PASS
+
 Date: 2026-10-19
 Policy: Option A — opt-in update checks
 Decision record: `docs/decisions/0001-update-check-policy.md`

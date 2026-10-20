@@ -145,18 +145,29 @@ Example output (illustrative):
 +--------------------------------------------------------------------------------------------------+
 | *  SWAP & IN-MEMORY CACHE AUDITOR                                                                |
 +--------------------------------------------------------------------------------------------------+
-  Swap  [#######.........]  48.5%   8.3 GB /  17.1 GB (free 8.8 GB)
-  RAM   [######..........]  39.2%  12.2 GB /  31.2 GB (avail 19.0 GB)
-  /tmp  [#######.........]  47.7%   7.4 GB /  15.6 GB (free 8.2 GB)
+  Swap     [#######.........]  48.5%   8.3 GB /  17.1 GB (free 8.8 GB)
+  RAM used [######..........]  39.2%  12.2 GB /  31.2 GB (avail 19.0 GB)
+  /tmp     [#######.........]  47.7%   7.4 GB /  15.6 GB (free 8.2 GB)
+  Pressure: green <50% · amber 50–79% · red ≥80%
+
+  Verdict: Swap 48.5% used · 1.9 GB reclaimable (1.1 GB tmpfs + 815.0 MB swap; upper bound; pools may overlap) ·
+  biggest win: agy PID 2603976 (582.3 MB) · thresholds: cache 12h, agent 2h, orphan-cache 1h
+
+  Swap:  2.9 GB attributed + 5.4 GB unattributed = 8.3 GB used
+  /tmp:  4.2 GB attributed + 1.0 GB unattributed = 5.2 GB used
+  unattributed reasons: other-uid 800.0 MB · non-matching 150.0 MB · metadata-or-other 40.0 MB
+  Reconciles: OK
 
 +--------------------------------------------------------------------------------------------------+
-| *  Actionable Reclaim Candidates (Cleanable: 5.9 GB)                                             |
+| *  Actionable Reclaim Candidates                                                                 |
 +--------------------------------------------------------------------------------------------------+
-  PID       | Target / Name      | Category         |       Size |     Idle | Action
-  ----------+--------------------+------------------+------------+----------+-----------------------
-  > 2603976 | agy                | dormant-agents   |   338.8 MB |   20h45m | End dormant session
-  > -       | go-build704621508  | untouched-caches |   338.7 MB |   20h46m | Prune untouched cache
-  ... and 652 smaller candidates (1.9 GB). Run with --all to inspect full list.
+  Reclaimable: 1.1 GB tmpfs · 815.0 MB swap (upper bound; pools may overlap)
+
+  ID       | Target / Name      | Category         |         Idle | Action               |    Reclaim
+  ---------+--------------------+------------------+--------------+----------------------+-----------
+           | agy ×3             | dormant-agents   |    6h44–7h12 | End dormant session  |   736.2 MB
+  ...
+  Actionable population: 8 cleanable · 8 shown (2 rows) · 0 hidden (0 B) · limit 12 rows
 ```
 
 ## Safety model
@@ -171,7 +182,12 @@ Example output (illustrative):
 - **Symlink rejection:** top-level symlink targets are rejected; `WalkDir` does not follow symlinks.
 - **File ownership:** file targets are checked against the current UID before removal.
 - **Orphan evidence:** a process is orphaned only when the cgroup/tty evidence indicates a reparented terminal session. `.service` cgroups, missing terminals, and ambiguous evidence fail closed.
-- **Orphan opt-in:** `--clean-all` covers untouched caches, abandoned runs, and dormant agents only. Use `--include-orphaned` with `--clean-all`, or `--clean-orphaned` alone.
+- **Orphan opt-in:** `--clean-all` covers untouched caches, abandoned runs, and dormant agents only. Use `--include-orphaned` with `--clean-all`, or `--clean-orphaned` alone. Orphaned caches use a separate `--clean-orphaned-caches` opt-in.
+- **Liveness before age:** a cache with an open descriptor, a process cwd, or a file-backed mapping is `in-use-caches` and is never cleanable, regardless of mtime. Orphaned caches are rechecked immediately before deletion and fail closed if the `/proc` index is incomplete.
+- **Parent and idle rechecks:** before `SIGTERM`, the cleaner re-reads parent liveness, orphan evidence, idle evidence, UID, and start ticks. Dormant targets with a live parent are skipped unless `--allow-live-parent` is explicit; orphaned targets with a live parent are always skipped.
+- **Zero-swap visibility:** agents with `VmSwap == 0` are still scanned, classified, and shown in the agent population and actionable table. Cleanup of a zero-swap orphan is an explicit process action with `0 B` swap reclaimed.
+- **Non-interactive guard:** cleanup from a non-TTY stdin requires `--dry-run` or `--yes`; otherwise the command exits `2` before scanning or mutating anything.
+- **Signal label:** every process action prints `SIGTERM` in both dry-run (`would-signal`) and live (`signaled`) output. There is no `SIGKILL`.
 - **Confirmation:** each cleanup group prompts unless `--yes` is set.
 - **Signal caveat:** `SIGTERM` can lose unsaved in-memory agent state. SwapAudit does not verify conversation persistence.
 
@@ -183,11 +199,13 @@ The full contract, including the manual systemd/other-UID verification protocol,
 
 | Category | Examples | Cleanable |
 | --- | --- | --- |
-| `untouched-caches` | `go-build*`, directories containing `cache` | After `--max-age` with no nested writes |
+| `untouched-caches` | `go-build*`, build caches beyond `--max-age` | After `--max-age` with no nested writes |
 | `abandoned-runs` | `test*`, `tmp-*`, `tsx-*`, `npm-*`, custom `--tmp-pattern` | After `--max-age` with no nested writes |
+| `orphaned-caches` | Build/run caches with no open handle, cwd, or mapping and idle beyond `--orphan-cache-age` | Opt-in only with `--clean-orphaned-caches` (or `--include-orphaned-caches` + `--clean-all`) |
+| `in-use-caches` | Caches with an open fd, process cwd, or file-backed mapping | Never |
+| `recent-caches` | Recently written caches | Protected |
 | `dormant-agents` | `agy`, `devin`, `chrome-devtools`, `antigravity` | Idle beyond `--idle-threshold` |
 | `abandoned-agents` | Same runtimes with cgroup/tty evidence of a reparented terminal session | Evidence-gated; ambiguous cases are protected |
-| `active-caches` | Recently written caches | Protected |
 | `desktop-daemons` | KDE, systemd, dbus, pipewire and similar | Protected |
 | `active-apps` | Everything else | Protected |
 
@@ -196,7 +214,6 @@ The full contract, including the manual systemd/other-UID verification protocol,
 - Scans `/tmp`, not `/var/tmp`.
 - Only the four agent runtimes above are classified. Claude Code, Codex, Cursor, Windsurf, Cline, Aider, OpenCode, Gemini, and others are not yet detected as agents.
 - Linux only. No Windows/macOS, no GUI, no daemon.
-- No JSON output yet.
 - No package-manager package yet.
 
 ## CLI reference
@@ -205,26 +222,61 @@ The full contract, including the manual systemd/other-UID verification protocol,
 | --- | --- | --- |
 | `upgrade` | — | Check GitHub releases and replace the binary (requires a published release) |
 | `--sort <size or age>` | `size` | Sort the occupant table |
-| `--limit <N>` | `12` | Maximum rows in the main table |
-| `--all` | `false` | Show individual processes without shell aggregation |
+| `--limit <N>` | `12` | Maximum rows per table; `0` means unlimited |
+| `--all` | `false` | Show all items; disables shell aggregation, grouping, and the 10 MB filter |
+| `--no-group` | `false` | Expand every grouped cache/process pattern |
+| `--expand <key>` | — | Expand one group key (prefix match) |
+| `--collapse` | `false` | Collapse groups (default) |
+| `--wide`, `--no-truncate` | `false` | Full names; may exceed the terminal width |
+| `--explain-agents` | `false` | Print per-agent parent/idle/tty/cgroup/reason evidence |
+| `--explain-caches` | `false` | Print per-cache liveness evidence |
 | `--clean-untouched` | `false` | Prune stale build caches beyond `--max-age` |
 | `--clean-abandoned` | `false` | Prune abandoned test/review runs in `/tmp` |
 | `--clean-dormant` | `false` | `SIGTERM` dormant agent sessions beyond `--idle-threshold` |
 | `--clean-orphaned` | `false` | `SIGTERM` evidence-gated orphaned agent sessions |
+| `--clean-orphaned-caches` | `false` | Prune orphaned caches with no open handles (opt-in) |
 | `--clean-tmp` | `false` | Prune untouched and abandoned `/tmp` caches |
-| `--clean-all` | `false` | Untouched + abandoned + dormant cleanup; excludes orphaned |
-| `--include-orphaned` | `false` | Include orphaned cleanup with `--clean-all` |
+| `--clean-all` | `false` | Untouched + abandoned + dormant cleanup; excludes orphaned agents and caches |
+| `--include-orphaned` | `false` | Include orphaned agent cleanup with `--clean-all` |
+| `--include-orphaned-caches` | `false` | Include orphaned cache cleanup with `--clean-all` |
+| `--allow-live-parent` | `false` | Allow ending a dormant agent whose parent is alive |
+| `--allow-generic-caches` | `false` | Permit generic cache classification and cleanup |
 | `--all-users` | `false` | Allow signaling processes owned by other UIDs |
 | `--dry-run` | `false` | Preview without deleting or signaling |
 | `-y`, `--yes` | `false` | Skip confirmation prompts |
 | `--max-age <duration>` | `12h` | Stale-cache cutoff |
 | `--idle-threshold <duration>` | `2h` | Dormant-agent cutoff |
+| `--orphan-cache-age <duration>` | `1h` | Orphaned-cache idle cutoff; must be `<= --max-age` |
 | `--tmp-pattern <pattern>` | built-in list | Additional `/tmp` pattern (repeatable) |
+| `--json` | `false` | Emit one versioned JSON object on stdout |
 | `--check-updates` | `false` | One explicit GitHub release check; see `PRIVACY.md` |
 | `--ascii` | `false` | Plain ASCII output |
 | `--no-color` | `false` | Disable ANSI color (also honors `NO_COLOR`) |
 | `-v`, `--version` | `false` | Print version and build metadata |
 | `-h`, `--help` | `false` | Show usage |
+
+Exit codes: `0` success, `1` runtime failure, `2` usage error, `3` cleanup partial failure.
+
+## What the numbers mean
+
+Every displayed byte is one of three things: a kernel total, a category sum, or an explicit `unattributed`/`overlap` residual. The tool never silently drops the difference between a header total and the scanned subset.
+
+- **Swap header** = `SwapTotal - SwapFree` from `/proc/meminfo`.
+- **Process swap** = the sum of `VmSwap` from `/proc/[pid]/status`; it may include shared pages, so it is labelled *attributed* and shown with a residual.
+- **/tmp header** = `statfs` used blocks. **Cache sizes** are allocated blocks (`Stat_t.Blocks * 512`), not apparent size; sparse files cannot inflate the reclaim estimate.
+- **Cleanable** is split by pool: tmpfs and swap are shown side by side and never added into a single primary number. They can overlap physically.
+- **Counts** are explained with population lines: raw items, after aggregation/grouping, shown, hidden below the 10 MB filter, and hidden beyond `--limit`.
+
+The full metric dictionary and caveats (shared swap, shmem, tmpfs swap, other UIDs, daemon prefixes, dotfiles, non-matching names, directory metadata, hard links) is in [`docs/metrics.md`](docs/metrics.md). Cache liveness rules are in [`docs/cache-liveness.md`](docs/cache-liveness.md), and the output layout contract is in [`docs/output-layout.md`](docs/output-layout.md).
+
+## Machine-readable audit
+
+```bash
+swapaudit --json | jq '{used: .system.swap.used_bytes, reclaim: .reclaim, agents: .population.agents}'
+swapaudit --json --dry-run --clean-all | jq '.cleanup'
+```
+
+`--json` writes exactly one object to stdout; diagnostics go to stderr. It implies no color and no human banner. Live JSON cleanup requires `--yes` or `--dry-run`. The schema, sorting rules, nullability, and exit-code matrix are in [`docs/json-schema.md`](docs/json-schema.md).
 
 ## Update checks and privacy
 

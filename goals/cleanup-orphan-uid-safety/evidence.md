@@ -1,5 +1,7 @@
 # Evidence: cleanup-orphan-uid-safety
 
+Verdict: PASS
+
 Date: 2026-10-19
 Commit: `ef471b1` (`fix: harden orphan detection and cleanup ownership`)
 Repository: `github.com/jadmadi/SwapAudit` (private)
