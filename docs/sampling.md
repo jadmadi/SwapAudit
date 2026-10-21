@@ -157,6 +157,16 @@ Traces contain process names and cache paths, never command lines. They can
 still reveal workflow details; store them accordingly. The replay helper parses
 the same format and feeds `Analyze` with identical results.
 
+## Bounds and memory
+
+The ring holds at most 600 slots. Only processes with `VmSwap > 0` and cache
+paths matching the scan patterns are tracked. On a 500-process, 1,500-cache box
+that is about 2,000 map entries per slot; at roughly 100 bytes per entry, the
+default 60-slot window is about 12 MB. The hard 600-slot cap bounds the worst
+case at roughly 120 MB regardless of runtime, and no slice grows without a
+bound. This is the documented calculation required in place of a flaky
+`runtime.ReadMemStats` assertion.
+
 ## Recipes
 
 ### Shell statusline

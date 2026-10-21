@@ -145,6 +145,24 @@ func TestRunOnceRecord(t *testing.T) {
 	}
 }
 
+func TestStreamCancelClosesRecorder(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.ndjson")
+	ctx, cancel := context.WithCancel(context.Background())
+	var out bytes.Buffer
+	cfg := samplerConfig(&out, testItems(), testSystem())
+	cfg.RecordPath = path
+	cfg.OnSample = func(WindowStats) { cancel() }
+	if err := Run(ctx, cfg); err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if !strings.Contains(out.String(), `"reason":"signal"`) {
+		t.Errorf("missing signal stopped line:\n%s", out.String())
+	}
+	if recorded := readRecorded(t, path); len(recorded) != 1 {
+		t.Errorf("recorded %d samples, want 1", len(recorded))
+	}
+}
+
 func TestSlowLane(t *testing.T) {
 	var scans int32
 	var out bytes.Buffer
@@ -235,6 +253,15 @@ func TestCapacity(t *testing.T) {
 		if got := capacity(tc.window, tc.interval); got != tc.want {
 			t.Errorf("capacity(%v,%v) = %d, want %d", tc.window, tc.interval, got, tc.want)
 		}
+	}
+}
+
+func BenchmarkScanner(b *testing.B) {
+	scanner := NewScanner()
+	now := time.Now()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = scanner.Scan(now)
 	}
 }
 

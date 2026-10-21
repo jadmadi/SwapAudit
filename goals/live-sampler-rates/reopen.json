@@ -1,0 +1,13 @@
+{
+  "goal_slug": "live-sampler-rates",
+  "reopened_at": "2026-10-21T08:17:58.996890935Z",
+  "reopened_by": "mystery-auditor",
+  "reason": "mystery audit failed probe: General Gating Threshold Failure (CCDSI score 0.312 \u003c 0.40)",
+  "original_commit": "488959c",
+  "resolved_at": "0001-01-01T00:00:00Z",
+  "active": true,
+  "tainted_goals": [
+    "notification-watch"
+  ],
+  "reopen_epoch": 1
+}

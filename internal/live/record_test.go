@@ -3,6 +3,8 @@
 package live
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,5 +119,41 @@ func TestRecordDeterministic(t *testing.T) {
 func TestReplayInvalid(t *testing.T) {
 	if _, err := Replay(strings.NewReader("{not json")); err == nil {
 		t.Error("Replay must reject malformed input")
+	}
+}
+
+func TestReplayAnalysisEquivalence(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.ndjson")
+	rec, err := NewRecorder(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 10, 21, 10, 0, 0, 0, time.UTC)
+	first := fixedSample(at)
+	second := fixedSample(at.Add(time.Second))
+	second.MonoSeconds = 13.5
+	second.System.SwapUsed += 10 * testMiB
+	second.Processes[processKey{PID: 1234, StartTicks: 42}] += 10 * testMiB
+	if err := rec.Write(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.Write(second); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	replayed := readRecorded(t, path)
+	want, err := json.Marshal(Analyze([]sample{first, second}, time.Minute, second.TmpfsSampledAt, second.At))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := json.Marshal(Analyze(replayed, time.Minute, replayed[1].TmpfsSampledAt, replayed[1].At))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(want, got) {
+		t.Errorf("replayed analysis differs\nwant %s\ngot  %s", want, got)
 	}
 }

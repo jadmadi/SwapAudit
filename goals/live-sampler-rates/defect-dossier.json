@@ -1,0 +1,12 @@
+{
+  "goal_slug": "live-sampler-rates",
+  "commit_sha": "225687edddc53711b378630cc730e0d40b2dc815",
+  "reopen_epoch": 1,
+  "failed_probe_name": "General Gating Threshold Failure",
+  "trigger_conditions": "Probe suite evaluation against contract specification",
+  "expected_behavior": "100% probe pass rate and CCDSI score \u003e= 0.40",
+  "actual_behavior": "Passed 16/16 probes, CCDSI=0.31",
+  "stderr_snippet": "",
+  "remediation_advice": "CCDSI score 0.312 \u003c 0.40",
+  "timestamp": "2026-10-21T08:17:58.989573922Z"
+}
