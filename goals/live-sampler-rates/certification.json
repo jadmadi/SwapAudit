@@ -1,12 +1,12 @@
 {
   "goal_slug": "live-sampler-rates",
-  "certified_at": "2026-10-21T08:34:29.201704051Z",
+  "certified_at": "2026-10-21T08:35:19.423221288Z",
   "certified_by": "command-code",
   "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/.sila/evidence/live-sampler-rates-contract.json",
-  "note": "auto-certified via immutable contract in 57ms",
+  "note": "auto-certified via immutable contract in 46ms",
   "verified": true,
   "facts_passed": 1,
   "facts_total": 1,
   "evidence_kind": "legacy_facts",
-  "commit_sha": "b2746e099c303c4445a4337b547eb779ab7f7d44"
+  "commit_sha": "7cde25f4e30ba2d9423061277377df6526fb9b2a"
 }

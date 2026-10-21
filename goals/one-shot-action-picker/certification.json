@@ -1,0 +1,12 @@
+{
+  "goal_slug": "one-shot-action-picker",
+  "certified_at": "2026-10-21T07:36:52.249570839Z",
+  "certified_by": "agent",
+  "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/goals/one-shot-action-picker/evidence.md",
+  "note": "certified from review document: evidence.md",
+  "verified": true,
+  "facts_passed": 1,
+  "facts_total": 1,
+  "evidence_kind": "review_document",
+  "commit_sha": "969bbdeb1c5d24dec9ebdb8079a18a1003393f0e"
+}

@@ -1,0 +1,12 @@
+{
+  "goal_slug": "notification-watch",
+  "certified_at": "2026-10-21T08:17:30.885022167Z",
+  "certified_by": "agent",
+  "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/goals/notification-watch/evidence.md",
+  "note": "certified from review document: evidence.md",
+  "verified": true,
+  "facts_passed": 1,
+  "facts_total": 1,
+  "evidence_kind": "review_document",
+  "commit_sha": "225687edddc53711b378630cc730e0d40b2dc815"
+}

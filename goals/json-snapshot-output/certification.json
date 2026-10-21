@@ -1,0 +1,12 @@
+{
+  "goal_slug": "json-snapshot-output",
+  "certified_at": "2026-10-21T07:20:59.101534729Z",
+  "certified_by": "agent",
+  "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/goals/json-snapshot-output/evidence.md",
+  "note": "certified from review document: evidence.md",
+  "verified": true,
+  "facts_passed": 1,
+  "facts_total": 1,
+  "evidence_kind": "review_document",
+  "commit_sha": "040c94844c2fe07d824148d7efb6eee9206d1426"
+}

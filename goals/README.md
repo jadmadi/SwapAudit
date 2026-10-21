@@ -29,7 +29,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 ## Summary
 - **Total Goals**: 14
 - 🟡 **Ready to Execute (Pending)**: 0 (0 independent ⚡, 0 unblocked 🔗)
-- 🟢 **Implemented**: 14 (13 verified 📜, 1 stale ⚠️, 0 unverified)
+- 🟢 **Implemented**: 14 (14 verified 📜, 0 unverified)
 - 🎯 **By Tier**: 4 immediate (Tier 1), 8 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
 - 📋 **Execution Tasks Progress**: 330/330 completed (100%)
 
@@ -50,6 +50,6 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `ea9a60d` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `f4f1f93` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `602fa2f` |
-| [`live-sampler-rates`](live-sampler-rates/goal.md) | `🔗 Dep` | 🚢 SHIP | stale ⚠️ | Git Commit | `b2746e0` |
+| [`live-sampler-rates`](live-sampler-rates/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `7cde25f` |
 | [`updater-boundary-tests`](updater-boundary-tests/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `9170277` |
 | [`notification-watch`](notification-watch/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Git Commit | `225687e` |
