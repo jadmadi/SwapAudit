@@ -81,8 +81,13 @@ AI coding agents MUST actively use Sila's 9-verb continuity toolchain during dev
 
 ## Stack-Specific Invariants (Go)
 
-- Pure-Go CGO-Free Portability: Maintain CGO_ENABLED=0 with pure-Go drivers (modernc.org/sqlite) across all target architectures.
-- Goroutine Leak Prevention: Verify goroutine lifecycle with goleak or context cancellation in all concurrent pipelines.
-- Race Detector Discipline: Always run tests with race detection ('go test -race ./...') with zero tolerance for data races.
-- File Size Ceilings: Enforce SRP with files <1,000 LOC; reject multi-thousand-line monolithic packages.
+- 1. Code Review & Hygiene: maintain pure Go standard library with zero third-party dependencies, Pure-Go CGO-Free Portability with CGO_ENABLED=0, and hard file ceilings under 1,000 LOC.
+- 2. Goroutine & Context Safety: require context.Context on all background routines; declare defer cancel() immediately after timeout context creation; ensure goroutine leak prevention.
+- 3. Goal Scaffolding: break findings into discrete single-outcome packages under goals/<slug>/ with goal.md, facts.md, plan.md, and explicit dependencies.
+- 4. Test-Driven Implementation: claim goal locks before editing; write table-driven tests verifying both acceptance assertions and negative rejection paths.
+- 5. Quality Gates & Race Detector Discipline: verify changes locally with linter scripts and full race detection ('go test -race ./...') with zero tolerance for data races.
+- 6. Attributed Commits: use semantic prefixes containing the goal slug: feat(scope): desc [goal: <slug>]; run sila goals audit to certify receipts.
+- 7. Git Branch Discipline: develop on dedicated feature branches; never push unprompted to remotes; re-verify race tests on merged main.
+- 8. Security & Trust Boundaries: validate all CLI flags and stdin readers; enforce UID ownership; use mode 0600 on sensitive temporary storage.
+- 9. Release Lifecycle & Value Changelog: implement a 24-hour cached daily version check, offer direct upgrades, provide a human-readable benefits-focused changelog, and credit contributors.
 <!-- sila:end -->
