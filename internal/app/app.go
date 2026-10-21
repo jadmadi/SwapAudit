@@ -17,6 +17,7 @@ import (
 
 	"github.com/jadmadi/swapaudit/internal/cache"
 	"github.com/jadmadi/swapaudit/internal/cleaner"
+	"github.com/jadmadi/swapaudit/internal/live"
 	"github.com/jadmadi/swapaudit/internal/model"
 	"github.com/jadmadi/swapaudit/internal/picker"
 	"github.com/jadmadi/swapaudit/internal/proc"
@@ -189,6 +190,114 @@ func runJSON(noCommand bool, maxAge, idleThreshold time.Duration, customPatterns
 	return 0
 }
 
+// validateSampleFlags enforces the bounded sampling contract.
+func validateSampleFlags(once, stream bool, interval, window, tmpInterval, duration time.Duration) error {
+	if once && stream {
+		return errors.New("--once and --stream are mutually exclusive")
+	}
+	if interval < 100*time.Millisecond || interval > 60*time.Second {
+		return errors.New("--interval must be between 100ms and 60s")
+	}
+	if window < time.Second || window > time.Hour {
+		return errors.New("--window must be between 1s and 1h")
+	}
+	if tmpInterval < time.Second || tmpInterval > 10*time.Minute {
+		return errors.New("--tmp-interval must be between 1s and 10m")
+	}
+	if duration < 0 {
+		return errors.New("--duration cannot be negative")
+	}
+	if window/interval > 600 {
+		return errors.New("window/interval exceeds 600 samples; increase --interval")
+	}
+	return nil
+}
+
+func runSample(args []string) int {
+	fs := flag.NewFlagSet("swapaudit sample", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	var (
+		once        = fs.Bool("once", false, "Emit one JSON document and exit")
+		stream      = fs.Bool("stream", false, "Emit one NDJSON line per tick")
+		interval    = fs.Duration("interval", time.Second, "Fast-lane cadence (100ms..60s)")
+		window      = fs.Duration("window", time.Minute, "Estimator window (1s..1h)")
+		tmpInterval = fs.Duration("tmp-interval", 30*time.Second, "Slow-lane cadence (1s..10m)")
+		duration    = fs.Duration("duration", 0, "Stop after this duration (0 = until signal)")
+		record      = fs.String("record", "", "Write raw NDJSON samples to path")
+		noCommand   = fs.Bool("no-command", false, "Omit command lines from the once snapshot")
+		_           = fs.Bool("json", false, "Accepted no-op; sample is always machine-readable")
+	)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printSampleUsage(os.Stdout)
+			return 0
+		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	if err := validateSampleFlags(*once, *stream, *interval, *window, *tmpInterval, *duration); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+
+	modeOnce := !*stream
+	if *once {
+		modeOnce = true
+	}
+	if !*once && !*stream && *record != "" {
+		modeOnce = false
+	}
+
+	const maxAge, idleThreshold = 12 * time.Hour, 2 * time.Hour
+	patterns := cache.DefaultTmpPatterns
+	cfg := live.Config{
+		Interval: *interval, Window: *window, TmpInterval: *tmpInterval,
+		Duration: *duration, RecordPath: *record, NoCommand: *noCommand,
+		Once: modeOnce, Out: os.Stdout,
+	}
+	if modeOnce {
+		now := time.Now()
+		uptime := proc.ReadUptime()
+		sys := proc.ReadSystemSwap()
+		items := CollectSwapItems(now, uptime, maxAge, idleThreshold, patterns)
+		cfg.ScanFast = live.NewFixedScanner(items, sys).Scan
+		cfg.ScanTmp = func() []model.SwapItem { return items }
+		cfg.Snapshot = func(at time.Time) snapshot.Snapshot {
+			return snapshot.BuildSnapshot(at, uptime, sys, items, maxAge, idleThreshold, *noCommand)
+		}
+	} else {
+		cfg.ScanFast = live.NewScanner().Scan
+		cfg.ScanTmp = func() []model.SwapItem {
+			return cache.ScanTmpDirectories(time.Now(), maxAge, patterns)
+		}
+	}
+	if err := live.Run(context.Background(), cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
+func printSampleUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: swapaudit sample [--once | --stream] [FLAGS]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Headless sampler with rates, attribution, and a gated ETA.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  --once                 Emit one JSON document and exit (default)")
+	fmt.Fprintln(w, "  --stream               Emit one NDJSON sample per tick")
+	fmt.Fprintln(w, "  --interval <duration>  Fast-lane cadence (default 1s, range 100ms..60s)")
+	fmt.Fprintln(w, "  --window <duration>    Estimator window (default 60s, range 1s..1h)")
+	fmt.Fprintln(w, "  --tmp-interval <dur>   Slow-lane cadence (default 30s, range 1s..10m)")
+	fmt.Fprintln(w, "  --duration <duration>  Stop after this duration (0 = until signal)")
+	fmt.Fprintln(w, "  --record <path>        Write raw NDJSON samples with mode 0600")
+	fmt.Fprintln(w, "  --no-command           Omit command lines from the once snapshot")
+	fmt.Fprintln(w, "  --json                 Accepted no-op; sample is always machine-readable")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "EXAMPLES:")
+	fmt.Fprintln(w, "  swapaudit sample --once | jq .")
+	fmt.Fprintln(w, "  swapaudit sample --stream --interval=1s --record=/tmp/trace.ndjson")
+}
+
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
@@ -255,6 +364,8 @@ func Run(args []string) int {
 				return 0
 			}
 			return updater.Upgrade(version.Version, os.Stdout, os.Stderr)
+		case "sample":
+			return runSample(args[1:])
 		}
 	}
 

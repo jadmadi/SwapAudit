@@ -376,6 +376,140 @@ func TestPickerEligibility(t *testing.T) {
 	}
 }
 
+func TestValidateSampleFlags(t *testing.T) {
+	cases := []struct {
+		name                       string
+		once, stream               bool
+		interval, window, tmp, dur time.Duration
+		want                       string
+	}{
+		{"valid once", true, false, time.Second, time.Minute, 30 * time.Second, 0, ""},
+		{"both modes", true, true, time.Second, time.Minute, 30 * time.Second, 0, "--once and --stream are mutually exclusive"},
+		{"short interval", false, false, 50 * time.Millisecond, time.Minute, 30 * time.Second, 0, "--interval must be between 100ms and 60s"},
+		{"long interval", false, false, 61 * time.Second, time.Minute, 30 * time.Second, 0, "--interval must be between 100ms and 60s"},
+		{"short window", false, false, time.Second, 500 * time.Millisecond, 30 * time.Second, 0, "--window must be between 1s and 1h"},
+		{"long window", false, false, time.Second, 2 * time.Hour, 30 * time.Second, 0, "--window must be between 1s and 1h"},
+		{"short tmp", false, false, time.Second, time.Minute, 500 * time.Millisecond, 0, "--tmp-interval must be between 1s and 10m"},
+		{"long tmp", false, false, time.Second, time.Minute, 11 * time.Minute, 0, "--tmp-interval must be between 1s and 10m"},
+		{"too many samples", false, false, time.Second, time.Hour, 30 * time.Second, 0, "window/interval exceeds 600 samples; increase --interval"},
+		{"negative duration", false, false, time.Second, time.Minute, 30 * time.Second, -time.Second, "--duration cannot be negative"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateSampleFlags(tc.once, tc.stream, tc.interval, tc.window, tc.tmp, tc.dur)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("validateSampleFlags() = %v", err)
+				}
+				return
+			}
+			if err == nil || err.Error() != tc.want {
+				t.Fatalf("validateSampleFlags() = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunSampleValidation(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"sample", "--once", "--stream"}, "--once and --stream are mutually exclusive"},
+		{[]string{"sample", "--interval=50ms"}, "--interval must be between 100ms and 60s"},
+		{[]string{"sample", "--window=2h"}, "--window must be between 1s and 1h"},
+		{[]string{"sample", "--tmp-interval=11m"}, "--tmp-interval must be between 1s and 10m"},
+		{[]string{"sample", "--window=1h", "--interval=1s"}, "window/interval exceeds 600 samples; increase --interval"},
+	}
+	for _, tc := range cases {
+		t.Run(strings.Join(tc.args, "_"), func(t *testing.T) {
+			code, stdout, stderr := captureRun(t, tc.args)
+			if code != 2 || stdout != "" || !strings.Contains(stderr, tc.want) {
+				t.Fatalf("code=%d stdout=%q stderr=%q, want code 2 and %q", code, stdout, stderr, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunSampleOnce(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"sample", "--once", "--json"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	var doc struct {
+		Type     string            `json:"type"`
+		Snapshot snapshot.Snapshot `json:"snapshot"`
+		Window   map[string]any    `json:"window"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatalf("stdout is not valid JSON: %v\n%s", err, stdout)
+	}
+	if doc.Type != "once" || doc.Snapshot.SchemaVersion != 1 {
+		t.Errorf("type/schema = %q/%d", doc.Type, doc.Snapshot.SchemaVersion)
+	}
+	for _, key := range []string{"swap", "tmpfs", "movers", "tmpfs_cleanable_bytes", "tmpfs_cleanable_items"} {
+		if _, ok := doc.Window[key]; !ok {
+			t.Errorf("window missing %q", key)
+		}
+	}
+	if strings.Contains(stdout, "\x1b") {
+		t.Error("sample output contains ANSI escapes")
+	}
+}
+
+func TestRunSampleStream(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"sample", "--stream", "--interval=100ms", "--duration=250ms"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) < 4 {
+		t.Fatalf("stream lines = %d, want >= 4\n%s", len(lines), stdout)
+	}
+	samples := 0
+	for i, line := range lines {
+		var doc map[string]any
+		if err := json.Unmarshal([]byte(line), &doc); err != nil {
+			t.Fatalf("line %d is not JSON: %v", i, err)
+		}
+		switch doc["type"] {
+		case "sample":
+			samples++
+		case "stopped":
+			if i != len(lines)-1 || doc["reason"] != "duration" {
+				t.Errorf("unexpected stopped line: %s", line)
+			}
+		default:
+			t.Errorf("line %d type = %v", i, doc["type"])
+		}
+	}
+	if samples < 3 {
+		t.Errorf("sample lines = %d, want >= 3", samples)
+	}
+}
+
+func TestRunSampleRecordMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "trace.ndjson")
+	code, _, stderr := captureRun(t, []string{"sample", "--once", "--record=" + path})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("record file: %v", err)
+	}
+	if mode := fi.Mode().Perm(); mode != 0o600 {
+		t.Errorf("record mode = %o, want 600", mode)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"type":"raw_sample"`) {
+		t.Errorf("record missing raw_sample type: %s", data)
+	}
+}
+
 func TestStringSliceFlag(t *testing.T) {
 	var s stringSliceFlag
 	if err := s.Set("first"); err != nil {

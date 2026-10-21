@@ -296,6 +296,28 @@ re-verifies PID start ticks and refuses reused PIDs. Cache tiers 1 and 2 are
 rebuildable. The picker performs no deletion or signalling itself: it delegates
 to the same guarded cleaner used by the `--clean-*` flags.
 
+## Live sampling and rates
+
+`swapaudit sample` is a headless measurement engine for scripts, statuslines,
+and CI. It samples the fast lane (system counters and per-process swap), walks
+`/tmp` on a slower lane, and estimates how fast swap or tmpfs is filling.
+
+```bash
+swapaudit sample --once | jq .
+swapaudit sample --stream --interval=1s --record=/tmp/swap-trace.ndjson
+```
+
+`--once` emits the full JSON snapshot plus a `window` block with trends, rates,
+movers, and a nullable `eta_seconds`. `--stream` emits one NDJSON line per tick
+and a final `stopped` line. The estimator gates on sample count, window span,
+fit quality, monotonicity, and direction, so a null ETA means "not enough
+evidence" rather than a confident lie.
+
+Process identity is `(pid, start_ticks)`, so a recycled PID cannot fabricate a
+mover; exited processes are reported in `exited_bytes`. See
+[docs/sampling.md](docs/sampling.md) for the estimator gates, attribution
+caveats, trace format, and statusline/CI recipes.
+
 ## Machine-readable JSON output
 
 `--json` emits exactly one versioned document to stdout for scripts, statuslines,
@@ -379,6 +401,7 @@ The project follows a standard modular Go architecture:
 - `internal/app`: CLI execution coordinator and flag parser.
 - `internal/cache`: `/tmp` cache scanner, pattern matcher, and mtime depth analysis.
 - `internal/cleaner`: surgical pruning and process termination with verification guards.
+- `internal/live`: headless sampler, bounded ring, OLS estimator, and raw trace recorder.
 - `internal/model`: shared data types for memory, processes, and categories.
 - `internal/proc`: kernel `/proc` parsers for status, meminfo, sched, and cmdline.
 - `internal/snapshot`: versioned machine-readable schema and pure document builder.

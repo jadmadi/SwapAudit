@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Interactive four-tier action picker with review panels and typed scope-token confirmation.
 - `--interactive` / `--no-interactive` flags and `SWAPAUDIT_NO_INTERACTIVE` for picker control.
 - Measured swap/tmpfs before-and-after line after each picker action.
+- `sample` subcommand with `--once` and `--stream` NDJSON output for swap and tmpfs.
+- OLS rate estimator with sample, span, R², monotonicity, and direction gating for a nullable ETA.
+- Bounded sampling ring with `(pid, start_ticks)` identity and exited/started attribution.
+- Optional `--record` NDJSON traces at mode `0600` with a replay helper.
+- `docs/sampling.md` with lanes, estimator gates, attribution caveats, and recipes.
 - LimitReader bounds (50MB binary, 1MB checksum) to protect self-updater against unbounded streams.
 - UID-scoped fallback paths for temporary update-check state caches.
 - Interactive reader edge-case and live temporary pruning unit test coverage.
