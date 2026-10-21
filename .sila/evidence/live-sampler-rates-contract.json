@@ -1,0 +1,16 @@
+{
+  "contract_command": "live-sampler-rates",
+  "date": "2026-10-21T08:34:29Z",
+  "duration_ms": 57,
+  "exit_code": 0,
+  "facts": [
+    {
+      "automatedVerification": true,
+      "fact": "Contract execution for goal live-sampler-rates passed",
+      "id": "live-sampler-rates-contract",
+      "passed": true,
+      "verified": true
+    }
+  ],
+  "output_snippet": "ok  \tgithub.com/jadmadi/swapaudit/internal/live\t(cached)\n"
+}

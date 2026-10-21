@@ -1,13 +1,14 @@
 {
   "goal_slug": "live-sampler-rates",
-  "reopened_at": "2026-10-21T08:17:58.996890935Z",
+  "reopened_at": "2026-10-21T08:22:18.953309208Z",
   "reopened_by": "mystery-auditor",
   "reason": "mystery audit failed probe: General Gating Threshold Failure (CCDSI score 0.312 \u003c 0.40)",
-  "original_commit": "488959c",
-  "resolved_at": "0001-01-01T00:00:00Z",
-  "active": true,
+  "original_commit": "07f4b98",
+  "resolved_commit": "b2746e0",
+  "resolved_at": "2026-10-21T08:34:29.210668084Z",
+  "active": false,
   "tainted_goals": [
     "notification-watch"
   ],
-  "reopen_epoch": 1
+  "reopen_epoch": 2
 }

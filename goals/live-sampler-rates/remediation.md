@@ -2,8 +2,8 @@
 
 ## Defect Overview
 - **Failed Probe**: `General Gating Threshold Failure`
-- **Commit SHA**: `225687edddc53711b378630cc730e0d40b2dc815`
-- **Timestamp**: `2026-10-21T08:17:58Z`
+- **Commit SHA**: `07f4b987e82d1cac1f8cdd32fb59aacda09f7f15`
+- **Timestamp**: `2026-10-21T08:22:18Z`
 
 ## Trigger Conditions
 Probe suite evaluation against contract specification
