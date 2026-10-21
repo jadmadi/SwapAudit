@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enforced fail-closed temporary file creation in build script.
 
+### Fixed
+- Watch shutdown now emits the stopped event with the correct reason through the sampler stop callback.
+
 ## [0.1.0] - 2026-10-19
 
 ### Added
