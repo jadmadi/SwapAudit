@@ -1,0 +1,6 @@
+{
+  "schema_version": "1",
+  "goal_slug": "live-sampler-rates",
+  "contract_hash": "f4c683ecb44cb681abb6d6a9a496e5f8cb10b2bb42f7348a4a6b1760955979bc",
+  "command": "go test ./internal/live"
+}
