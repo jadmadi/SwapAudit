@@ -5,6 +5,7 @@ package app
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/cleaner"
 	"github.com/jadmadi/swapaudit/internal/live"
 	"github.com/jadmadi/swapaudit/internal/model"
+	"github.com/jadmadi/swapaudit/internal/notify"
 	"github.com/jadmadi/swapaudit/internal/picker"
 	"github.com/jadmadi/swapaudit/internal/proc"
 	"github.com/jadmadi/swapaudit/internal/snapshot"
@@ -26,6 +28,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/triage"
 	"github.com/jadmadi/swapaudit/internal/updater"
 	"github.com/jadmadi/swapaudit/internal/version"
+	"github.com/jadmadi/swapaudit/internal/watch"
 )
 
 // stringSliceFlag implements flag.Value to allow repeatable string flags.
@@ -298,6 +301,261 @@ func printSampleUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit sample --stream --interval=1s --record=/tmp/trace.ndjson")
 }
 
+type watchOptions struct {
+	eta, sustain, cooldown, rearmETA                     time.Duration
+	pressure, rearmPressure                              float64
+	maxPerHour                                           int
+	resource, notifyMode                                 string
+	notifyCmd                                            []string
+	notifyRecovery, testNotify, quiet, json              bool
+	statusEvery, interval, window, tmpInterval, duration time.Duration
+}
+
+func validateWatchOptions(o watchOptions) error {
+	if err := validateSampleFlags(false, false, o.interval, o.window, o.tmpInterval, o.duration); err != nil {
+		return err
+	}
+	switch o.notifyMode {
+	case "auto", "desktop", "osc", "stderr", "command":
+	default:
+		return errors.New("--notify must be one of auto, desktop, osc, stderr, command")
+	}
+	if o.eta <= 0 || o.eta > 24*time.Hour {
+		return errors.New("--eta must be between 1s and 24h")
+	}
+	if o.pressure < 1 || o.pressure > 100 {
+		return errors.New("--pressure must be between 1 and 100")
+	}
+	if o.rearmETA <= o.eta {
+		return errors.New("--rearm-eta must be greater than --eta")
+	}
+	if o.rearmPressure >= o.pressure {
+		return errors.New("--rearm-pressure must be less than --pressure")
+	}
+	if o.sustain < o.interval {
+		return errors.New("--sustain must be at least one interval")
+	}
+	if o.cooldown < 0 {
+		return errors.New("--cooldown cannot be negative")
+	}
+	if o.maxPerHour < 1 {
+		return errors.New("--max-per-hour must be at least 1")
+	}
+	if o.statusEvery < 0 {
+		return errors.New("--status-every cannot be negative")
+	}
+	if len(o.notifyCmd) > 0 && o.notifyMode != "command" {
+		return errors.New("--notify-cmd requires --notify=command")
+	}
+	if o.json && o.notifyMode == "command" {
+		return errors.New("--json cannot be combined with --notify=command")
+	}
+	if o.notifyMode == "command" && len(o.notifyCmd) == 0 {
+		return errors.New("--notify=command requires --notify-cmd")
+	}
+	if o.resource != "both" && o.resource != "swap" && o.resource != "tmpfs" {
+		return errors.New("--resource must be both, swap, or tmpfs")
+	}
+	return nil
+}
+
+func runWatch(args []string) int {
+	fs := flag.NewFlagSet("swapaudit watch", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	var o watchOptions
+	var cmdArgs stringSliceFlag
+	fs.DurationVar(&o.eta, "eta", 15*time.Minute, "Alert when the ETA is at or below this duration")
+	fs.Float64Var(&o.pressure, "pressure", 90, "Fallback pressure threshold (percent)")
+	fs.DurationVar(&o.sustain, "sustain", 10*time.Second, "Continuous danger before alerting")
+	fs.DurationVar(&o.cooldown, "cooldown", 10*time.Minute, "Minimum time between incidents")
+	fs.IntVar(&o.maxPerHour, "max-per-hour", 4, "Maximum alerts per resource per rolling hour")
+	fs.DurationVar(&o.rearmETA, "rearm-eta", 20*time.Minute, "ETA required to re-arm")
+	fs.Float64Var(&o.rearmPressure, "rearm-pressure", 85, "Pressure required to re-arm")
+	fs.StringVar(&o.resource, "resource", "both", "Resource to watch: both, swap, or tmpfs")
+	fs.StringVar(&o.notifyMode, "notify", "auto", "Transport: auto, desktop, osc, stderr, command")
+	fs.Var(&cmdArgs, "notify-cmd", "Command argv element for --notify=command (repeatable)")
+	fs.BoolVar(&o.notifyRecovery, "notify-recovery", false, "Notify when a resource recovers")
+	fs.BoolVar(&o.testNotify, "test-notify", false, "Send one probe notification and exit")
+	fs.DurationVar(&o.statusEvery, "status-every", 10*time.Second, "Status line cadence (0 disables)")
+	fs.BoolVar(&o.quiet, "quiet", false, "Suppress the status line")
+	fs.BoolVar(&o.json, "json", false, "Emit event lines to stdout and send nothing")
+	fs.DurationVar(&o.interval, "interval", time.Second, "Fast-lane cadence")
+	fs.DurationVar(&o.window, "window", time.Minute, "Estimator window")
+	fs.DurationVar(&o.tmpInterval, "tmp-interval", 30*time.Second, "Slow-lane cadence")
+	fs.DurationVar(&o.duration, "duration", 0, "Stop after this duration (0 = until signal)")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printWatchUsage(os.Stdout)
+			return 0
+		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	o.notifyCmd = cmdArgs
+	if o.testNotify {
+		return runTestNotify(o)
+	}
+	if err := validateWatchOptions(o); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	return runWatchLoop(o)
+}
+
+func runTestNotify(o watchOptions) int {
+	switch o.notifyMode {
+	case "auto", "desktop", "osc", "stderr", "command":
+	default:
+		fmt.Fprintln(os.Stderr, "error: --notify must be one of auto, desktop, osc, stderr, command")
+		return 2
+	}
+	tr, err := notify.Select(notify.Config{Mode: o.notifyMode, Command: o.notifyCmd, Stderr: os.Stderr})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	name, err := notify.Send(context.Background(), tr, notify.Message{
+		Title: "swapaudit test notification", Body: "Notification transport is working.",
+	})
+	if err != nil {
+		fmt.Printf("transport: %s failed\n", name)
+		return 1
+	}
+	fmt.Printf("transport: %s ok\n", name)
+	return 0
+}
+
+func runWatchLoop(o watchOptions) int {
+	wcfg := watch.Config{
+		ETAThreshold: o.eta, PressureThreshold: o.pressure, Sustain: o.sustain,
+		Cooldown: o.cooldown, MaxPerHour: o.maxPerHour, RearmETA: o.rearmETA,
+		RearmPressure: o.rearmPressure, Resource: o.resource, NotifyRecovery: o.notifyRecovery,
+		Interval: o.interval, TmpInterval: o.tmpInterval, Now: time.Now,
+	}
+	ncfg := notify.Config{Mode: o.notifyMode, Command: o.notifyCmd, Stderr: os.Stderr}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var messages chan notify.Message
+	var senderDone chan struct{}
+	dropped := 0
+
+	if !o.json {
+		transport, err := notify.Select(ncfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			cancel()
+			return 2
+		}
+		messages = make(chan notify.Message, 4)
+		senderDone = make(chan struct{})
+		go func() {
+			defer close(senderDone)
+			notify.Sender(ctx, messages, transport)
+		}()
+	}
+	defer func() {
+		if messages != nil {
+			close(messages)
+			<-senderDone
+		}
+		cancel()
+	}()
+
+	states := map[string]*watch.State{}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	var emitErr error
+	lastStatus := time.Time{}
+
+	onSample := func(stats live.WindowStats) {
+		for _, decision := range watch.Evaluate(wcfg, states, stats) {
+			if o.json {
+				if err := enc.Encode(decision.Event); err != nil {
+					emitErr = err
+					cancel()
+				}
+				continue
+			}
+			if decision.Kind == "alert" || (decision.Kind == "recovered" && o.notifyRecovery) {
+				msg := notify.Message{Title: decision.Title, Body: decision.Body, Severity: decision.Severity}
+				select {
+				case messages <- msg:
+				default:
+					dropped++
+				}
+			}
+		}
+		if o.json || o.quiet || o.statusEvery == 0 {
+			return
+		}
+		now := time.Now()
+		if lastStatus.IsZero() || now.Sub(lastStatus) >= o.statusEvery {
+			line := watch.FormatStatus(o.resource, stats, watch.TopMover(stats, o.resource), o.pressure)
+			if dropped > 0 {
+				line += fmt.Sprintf(" | dropped %d", dropped)
+			}
+			fmt.Fprintln(os.Stderr, line)
+			lastStatus = now
+		}
+	}
+	onStop := func(reason string) {
+		if !o.json {
+			return
+		}
+		line := map[string]any{"type": "stopped", "reason": reason, "sampled_at": time.Now().Format(time.RFC3339)}
+		if err := enc.Encode(line); err != nil {
+			emitErr = err
+		}
+	}
+
+	lcfg := live.Config{
+		Interval: o.interval, Window: o.window, TmpInterval: o.tmpInterval, Duration: o.duration,
+		Out:      io.Discard,
+		ScanFast: live.NewScanner().Scan,
+		ScanTmp: func() []model.SwapItem {
+			return cache.ScanTmpDirectories(time.Now(), 12*time.Hour, cache.DefaultTmpPatterns)
+		},
+		OnSample: onSample,
+		OnStop:   onStop,
+	}
+	if err := live.Run(ctx, lcfg); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	if emitErr != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", emitErr)
+		return 1
+	}
+	return 0
+}
+
+func printWatchUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: swapaudit watch [FLAGS]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Foreground threshold notifications over the live sampler.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  --eta <duration>        Alert when the ETA is at or below this (default 15m)")
+	fmt.Fprintln(w, "  --pressure <percent>    Fallback pressure threshold (default 90)")
+	fmt.Fprintln(w, "  --sustain <duration>    Continuous danger before alerting (default 10s)")
+	fmt.Fprintln(w, "  --cooldown <duration>   Minimum time between incidents (default 10m)")
+	fmt.Fprintln(w, "  --max-per-hour <N>      Maximum alerts per resource per hour (default 4)")
+	fmt.Fprintln(w, "  --rearm-eta <duration>  ETA required to re-arm (default 20m)")
+	fmt.Fprintln(w, "  --rearm-pressure <pct>  Pressure required to re-arm (default 85)")
+	fmt.Fprintln(w, "  --resource <r>          both, swap, or tmpfs (default both)")
+	fmt.Fprintln(w, "  --notify <mode>         auto, desktop, osc, stderr, command (default auto)")
+	fmt.Fprintln(w, "  --notify-cmd <arg>      Command argv element; repeat for each argument")
+	fmt.Fprintln(w, "  --notify-recovery       Notify when a resource recovers")
+	fmt.Fprintln(w, "  --test-notify           Send one probe notification and exit")
+	fmt.Fprintln(w, "  --status-every <dur>    Status cadence to stderr (default 10s, 0 disables)")
+	fmt.Fprintln(w, "  --quiet                 Suppress the status line")
+	fmt.Fprintln(w, "  --json                  Emit event NDJSON to stdout and send nothing")
+	fmt.Fprintln(w, "  --duration <duration>   Stop after this duration (0 = until signal)")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "EXAMPLES:")
+	fmt.Fprintln(w, "  swapaudit watch --eta=15m --pressure=90")
+	fmt.Fprintln(w, "  swapaudit watch --json --duration=30s")
+}
+
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
@@ -366,6 +624,8 @@ func Run(args []string) int {
 			return updater.Upgrade(version.Version, os.Stdout, os.Stderr)
 		case "sample":
 			return runSample(args[1:])
+		case "watch":
+			return runWatch(args[1:])
 		}
 	}
 

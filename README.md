@@ -318,6 +318,28 @@ mover; exited processes are reported in `exited_bytes`. See
 [docs/sampling.md](docs/sampling.md) for the estimator gates, attribution
 caveats, trace format, and statusline/CI recipes.
 
+## Foreground watch and notifications
+
+`swapaudit watch` runs the sampler in the foreground and sends one notification
+per incident when swap or tmpfs is projected to run out.
+
+```bash
+swapaudit watch
+swapaudit watch --test-notify
+swapaudit watch --json --duration=30s
+```
+
+The trigger requires danger to persist for `--sustain`, uses `--rearm-eta` and
+`--rearm-pressure` hysteresis, enforces a per-resource `--cooldown` and hourly
+cap, and falls back to absolute pressure when the ETA is null. The transport
+chain probes `notify-send`, `gdbus`, `dbus-send`, `kdialog`, OSC 777, and finally
+stderr; every invocation is argv-only with a three-second timeout. `--json`
+emits the same events as NDJSON and sends nothing.
+
+No daemon, pidfile, lock file, or service unit is created. See
+[docs/watch.md](docs/watch.md) for the state diagram, payloads, transport
+details, fatigue tuning, the `systemd-run` recipe, and the privacy note.
+
 ## Machine-readable JSON output
 
 `--json` emits exactly one versioned document to stdout for scripts, statuslines,
@@ -403,9 +425,11 @@ The project follows a standard modular Go architecture:
 - `internal/cleaner`: surgical pruning and process termination with verification guards.
 - `internal/live`: headless sampler, bounded ring, OLS estimator, and raw trace recorder.
 - `internal/model`: shared data types for memory, processes, and categories.
+- `internal/notify`: probed notification transports with argv-only execution.
 - `internal/proc`: kernel `/proc` parsers for status, meminfo, sched, and cmdline.
 - `internal/snapshot`: versioned machine-readable schema and pure document builder.
 - `internal/term`: terminal layout, ANSI color engine, and text width calculations.
+- `internal/watch`: danger state machine, sustain/hysteresis/cooldown, and payload rendering.
 - `internal/triage`: process classification and shell aggregation logic.
 - `internal/updater`: release checking and atomic binary self-upgrades.
 - `internal/version`: version string formatting and build metadata.

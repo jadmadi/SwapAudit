@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded sampling ring with `(pid, start_ticks)` identity and exited/started attribution.
 - Optional `--record` NDJSON traces at mode `0600` with a replay helper.
 - `docs/sampling.md` with lanes, estimator gates, attribution caveats, and recipes.
+- `watch` subcommand with sustain, hysteresis, cooldown, hourly cap, and escalation.
+- Probed notification chain: notify-send, gdbus, dbus-send, kdialog, OSC 777, stderr.
+- `--test-notify` transport probe and `--json` event NDJSON with no transport sends.
+- `docs/watch.md` with the state diagram, payloads, fatigue tuning, and systemd-run recipe.
 - LimitReader bounds (50MB binary, 1MB checksum) to protect self-updater against unbounded streams.
 - UID-scoped fallback paths for temporary update-check state caches.
 - Interactive reader edge-case and live temporary pruning unit test coverage.

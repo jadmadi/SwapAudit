@@ -458,7 +458,7 @@ func TestRunSampleOnce(t *testing.T) {
 }
 
 func TestRunSampleStream(t *testing.T) {
-	code, stdout, stderr := captureRun(t, []string{"sample", "--stream", "--interval=100ms", "--duration=250ms"})
+	code, stdout, stderr := captureRun(t, []string{"sample", "--stream", "--interval=100ms", "--duration=1s"})
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
 	}
@@ -507,6 +507,116 @@ func TestRunSampleRecordMode(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"type":"raw_sample"`) {
 		t.Errorf("record missing raw_sample type: %s", data)
+	}
+}
+
+func validWatch() watchOptions {
+	return watchOptions{
+		eta: 15 * time.Minute, sustain: 10 * time.Second, cooldown: 10 * time.Minute,
+		rearmETA: 20 * time.Minute, pressure: 90, rearmPressure: 85, maxPerHour: 4,
+		resource: "both", notifyMode: "auto", statusEvery: 10 * time.Second,
+		interval: time.Second, window: time.Minute, tmpInterval: 30 * time.Second,
+	}
+}
+
+func TestValidateWatchOptions(t *testing.T) {
+	cases := []struct {
+		name string
+		edit func(*watchOptions)
+		want string
+	}{
+		{"valid", func(*watchOptions) {}, ""},
+		{"zero eta", func(o *watchOptions) { o.eta = 0 }, "--eta must be between 1s and 24h"},
+		{"long eta", func(o *watchOptions) { o.eta = 25 * time.Hour }, "--eta must be between 1s and 24h"},
+		{"low pressure", func(o *watchOptions) { o.pressure = 0 }, "--pressure must be between 1 and 100"},
+		{"high pressure", func(o *watchOptions) { o.pressure = 101 }, "--pressure must be between 1 and 100"},
+		{"rearm eta", func(o *watchOptions) { o.rearmETA = 10 * time.Minute }, "--rearm-eta must be greater than --eta"},
+		{"rearm pressure", func(o *watchOptions) { o.rearmPressure = 95 }, "--rearm-pressure must be less than --pressure"},
+		{"short sustain", func(o *watchOptions) { o.sustain = 500 * time.Millisecond }, "--sustain must be at least one interval"},
+		{"negative cooldown", func(o *watchOptions) { o.cooldown = -time.Second }, "--cooldown cannot be negative"},
+		{"zero cap", func(o *watchOptions) { o.maxPerHour = 0 }, "--max-per-hour must be at least 1"},
+		{"negative status", func(o *watchOptions) { o.statusEvery = -time.Second }, "--status-every cannot be negative"},
+		{"bad notify", func(o *watchOptions) { o.notifyMode = "bogus" }, "--notify must be one of auto, desktop, osc, stderr, command"},
+		{"cmd without command", func(o *watchOptions) { o.notifyCmd = []string{"x"} }, "--notify-cmd requires --notify=command"},
+		{"json command", func(o *watchOptions) { o.notifyMode, o.notifyCmd, o.json = "command", []string{"x"}, true }, "--json cannot be combined with --notify=command"},
+		{"command without cmd", func(o *watchOptions) { o.notifyMode = "command" }, "--notify=command requires --notify-cmd"},
+		{"bad resource", func(o *watchOptions) { o.resource = "ram" }, "--resource must be both, swap, or tmpfs"},
+		{"bad interval", func(o *watchOptions) { o.interval = 50 * time.Millisecond }, "--interval must be between 100ms and 60s"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			o := validWatch()
+			tc.edit(&o)
+			err := validateWatchOptions(o)
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("validateWatchOptions() = %v", err)
+				}
+				return
+			}
+			if err == nil || err.Error() != tc.want {
+				t.Fatalf("validateWatchOptions() = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunWatchValidation(t *testing.T) {
+	cases := [][]string{
+		{"watch", "--eta=0"},
+		{"watch", "--rearm-eta=10m"},
+		{"watch", "--rearm-pressure=95"},
+		{"watch", "--sustain=100ms"},
+		{"watch", "--json", "--notify=command", "--notify-cmd=x"},
+		{"watch", "--notify=command"},
+		{"watch", "--notify=bogus"},
+	}
+	for _, args := range cases {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			code, stdout, stderr := captureRun(t, args)
+			if code != 2 || stdout != "" || stderr == "" {
+				t.Fatalf("code=%d stdout=%q stderr=%q, want exit 2 with a diagnostic", code, stdout, stderr)
+			}
+		})
+	}
+}
+
+func TestRunWatchJSON(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"watch", "--json", "--duration=300ms", "--interval=100ms", "--status-every=0"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	if len(lines) < 1 {
+		t.Fatalf("event lines = %d, want at least the stopped line\n%s", len(lines), stdout)
+	}
+	for i, line := range lines {
+		var doc map[string]any
+		if err := json.Unmarshal([]byte(line), &doc); err != nil {
+			t.Fatalf("line %d is not JSON: %v", i, err)
+		}
+		if doc["type"] == "stopped" && i != len(lines)-1 {
+			t.Errorf("stopped line is not last: %s", line)
+		}
+	}
+	if !strings.Contains(lines[len(lines)-1], `"type":"stopped"`) {
+		t.Errorf("last line = %s", lines[len(lines)-1])
+	}
+	if strings.Contains(stdout, "\x1b") {
+		t.Error("watch JSON contains ANSI escapes")
+	}
+}
+
+func TestRunWatchTestNotifyStderr(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"watch", "--test-notify", "--notify=stderr"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	if !strings.Contains(stdout, "transport: stderr ok") {
+		t.Errorf("stdout = %q", stdout)
+	}
+	if !strings.Contains(stderr, "NOTIFY swapaudit test notification") {
+		t.Errorf("stderr = %q", stderr)
 	}
 }
 
