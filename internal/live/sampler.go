@@ -37,6 +37,7 @@ type Config struct {
 	ScanTmp     func() []model.SwapItem
 	Snapshot    func(now time.Time) snapshot.Snapshot
 	OnSample    func(WindowStats)
+	OnStop      func(reason string)
 	Out         io.Writer
 	Err         io.Writer
 }
@@ -325,6 +326,9 @@ func runStream(ctx context.Context, cfg Config, out io.Writer, clock, mono func(
 	}
 
 	finish := func(reason string, runErr error) error {
+		if runErr == nil && cfg.OnStop != nil {
+			cfg.OnStop(reason)
+		}
 		if runErr == nil {
 			line := stoppedDocument{Type: "stopped", Reason: reason, SampledAt: clock().Format(time.RFC3339)}
 			if err := enc.Encode(line); err != nil {
