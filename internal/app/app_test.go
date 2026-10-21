@@ -334,6 +334,48 @@ func TestRunJSONSuppressesUpdateNotice(t *testing.T) {
 	}
 }
 
+func TestRunForcedInteractiveRequiresTTY(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"--interactive"})
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2", code)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q, want empty", stdout)
+	}
+	if !strings.Contains(stderr, "error: --interactive requires a terminal on stdin and stdout") {
+		t.Errorf("stderr = %q", stderr)
+	}
+}
+
+func TestRunSkipsPickerOnNonTTY(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"--no-update-check", "--limit", "1", "--no-color", "--ascii"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	if strings.Contains(stdout, "ACTION PICKER") {
+		t.Error("picker must not appear when stdin/stdout are not terminals")
+	}
+	if !strings.Contains(stdout, "Quick Maintenance Commands") {
+		t.Error("redirected output must still contain the quick commands")
+	}
+}
+
+func TestPickerEligibility(t *testing.T) {
+	if !pickerEligible(true, false) {
+		t.Error("--interactive must force eligibility after the TTY check")
+	}
+	if pickerEligible(false, true) {
+		t.Error("--no-interactive must disable the picker")
+	}
+	t.Setenv("SWAPAUDIT_NO_INTERACTIVE", "1")
+	if pickerEligible(false, false) {
+		t.Error("SWAPAUDIT_NO_INTERACTIVE must disable the default picker")
+	}
+	if !pickerEligible(true, false) {
+		t.Error("explicit --interactive must not be overridden by the environment")
+	}
+}
+
 func TestStringSliceFlag(t *testing.T) {
 	var s stringSliceFlag
 	if err := s.Set("first"); err != nil {

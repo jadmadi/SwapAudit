@@ -3,6 +3,7 @@
 package app
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -17,6 +18,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/cache"
 	"github.com/jadmadi/swapaudit/internal/cleaner"
 	"github.com/jadmadi/swapaudit/internal/model"
+	"github.com/jadmadi/swapaudit/internal/picker"
 	"github.com/jadmadi/swapaudit/internal/proc"
 	"github.com/jadmadi/swapaudit/internal/snapshot"
 	"github.com/jadmadi/swapaudit/internal/term"
@@ -187,6 +189,57 @@ func runJSON(noCommand bool, maxAge, idleThreshold time.Duration, customPatterns
 	return 0
 }
 
+func isTerminal(f *os.File) bool {
+	fi, err := f.Stat()
+	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+		return false
+	}
+	if nullInfo, err := os.Stat(os.DevNull); err == nil && os.SameFile(fi, nullInfo) {
+		return false
+	}
+	return true
+}
+
+func stdinIsTerminal() bool {
+	return isTerminal(os.Stdin)
+}
+
+func stdoutIsTerminal() bool {
+	return isTerminal(os.Stdout)
+}
+
+// pickerEligible applies flags, the environment, and the TTY gate.
+func pickerEligible(interactive, noInteractive bool) bool {
+	if noInteractive {
+		return false
+	}
+	if interactive {
+		return true
+	}
+	if os.Getenv("SWAPAUDIT_NO_INTERACTIVE") == "1" {
+		return false
+	}
+	return stdinIsTerminal() && stdoutIsTerminal()
+}
+
+func runPicker(items []model.SwapItem, dryRun bool, maxAge, idleThreshold time.Duration, patterns []string) {
+	cfg := picker.Config{
+		In:       bufio.NewReader(os.Stdin),
+		Out:      os.Stdout,
+		Items:    items,
+		DryRun:   dryRun,
+		Width:    term.TermWidth(),
+		Snapshot: proc.ReadSystemSwap,
+		Scan: func() []model.SwapItem {
+			return CollectSwapItems(time.Now(), proc.ReadUptime(), maxAge, idleThreshold, patterns)
+		},
+		Execute: func(items []model.SwapItem, untouched, abandoned, dormant, orphaned, dr, yes bool) {
+			executeCleanup(items, untouched, abandoned, dormant, orphaned, dr, yes)
+		},
+	}
+	picker.Run(cfg)
+}
+
 // Run parses CLI flags and executes the swapaudit command workflow.
 func Run(args []string) int {
 	if len(args) > 0 {
@@ -263,6 +316,10 @@ func Run(args []string) int {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
 	}
+	if *interactive && (!stdinIsTerminal() || !stdoutIsTerminal()) {
+		fmt.Fprintln(os.Stderr, "error: --interactive requires a terminal on stdin and stdout")
+		return 2
+	}
 
 	if *jsonOutput {
 		return runJSON(*noCommand, *maxAge, *idleThreshold, customTmpPatterns)
@@ -330,9 +387,12 @@ func Run(args []string) int {
 		*cleanAbandoned = true
 	}
 
-	if *cleanUntouched || *cleanAbandoned || *cleanDormant || *cleanOrphaned {
+	if cleanupRequested {
 		executeCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
 	} else {
+		if pickerEligible(*interactive, *noInteractive) {
+			runPicker(items, *dryRun, *maxAge, *idleThreshold, tmpPatterns)
+		}
 		PrintQuickCommands()
 	}
 

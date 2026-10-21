@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read-only `--json` mode emitting a versioned, canonically ordered machine-readable snapshot.
 - `--no-command` privacy flag that omits command lines from JSON output.
 - `docs/json-schema.md` contract with nullability rules, ordering guarantees, and consumer recipes.
+- Interactive four-tier action picker with review panels and typed scope-token confirmation.
+- `--interactive` / `--no-interactive` flags and `SWAPAUDIT_NO_INTERACTIVE` for picker control.
+- Measured swap/tmpfs before-and-after line after each picker action.
 - LimitReader bounds (50MB binary, 1MB checksum) to protect self-updater against unbounded streams.
 - UID-scoped fallback paths for temporary update-check state caches.
 - Interactive reader edge-case and live temporary pruning unit test coverage.

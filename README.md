@@ -258,6 +258,44 @@ Print version information:
 swapaudit --version
 ```
 
+## Interactive picker
+
+When both stdin and stdout are terminals, the report ends with a four-row action
+menu. Scripts, pipes, and CI have no TTY, so their output is unchanged.
+
+```text
+ACTION PICKER
+  KEY | TIER                        | ITEMS |      SIZE | RESOURCE | SAFETY
+  1   | untouched caches (>12h)     |     5 |  367.5 MB | RAM      | rebuildable
+  2   | abandoned runs (>12h idle)  |    25 |   12.4 MB | RAM      | rebuildable
+  3   | dormant agents (>2h idle)   |     3 |  197.9 MB | swap     | irreversible
+  4   | orphaned agents (parent gone) |   0 |        —  | swap     | irreversible
+```
+
+Selecting a tier opens a review panel with the exact targets, sizes, idle times,
+and what the tier frees. Nothing runs until you type the scope token: the target
+count for filesystem tiers (for example `5`) or the PID of the largest target for
+process tiers (for example `1618347`). A mismatch is refused with the expected
+token; after three attempts the tier is cancelled. `q`, empty input, or EOF
+exits without touching anything. No passcode is stored: the token confirms the
+scope of the action, not your identity.
+
+After a successful action the picker re-scans once and prints the measured swap
+and tmpfs before/after. Dry-run rehearsal uses the same flow:
+
+```bash
+swapaudit --dry-run
+```
+
+The menu is on by default only when a terminal is present. Force it with
+`--interactive` (a non-TTY is then a usage error), disable it with
+`--no-interactive` or `SWAPAUDIT_NO_INTERACTIVE=1`.
+
+Process tiers 3 and 4 send SIGTERM and are irreversible; the cleaner still
+re-verifies PID start ticks and refuses reused PIDs. Cache tiers 1 and 2 are
+rebuildable. The picker performs no deletion or signalling itself: it delegates
+to the same guarded cleaner used by the `--clean-*` flags.
+
 ## Machine-readable JSON output
 
 `--json` emits exactly one versioned document to stdout for scripts, statuslines,

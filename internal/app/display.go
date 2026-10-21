@@ -500,5 +500,6 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit --dry-run --clean-all         # Preview what would be reclaimed")
 	fmt.Fprintln(w, "  swapaudit --clean-tmp                   # Prune stale /tmp build and test caches")
 	fmt.Fprintln(w, "  swapaudit --json --no-command           # Machine-readable document without command lines")
+	fmt.Fprintln(w, "  swapaudit --interactive                 # Force the tiered action picker in a terminal")
 	fmt.Fprintln(w, "  swapaudit upgrade                       # Upgrade binary to latest release")
 }
