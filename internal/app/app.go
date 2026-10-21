@@ -18,6 +18,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/cleaner"
 	"github.com/jadmadi/swapaudit/internal/model"
 	"github.com/jadmadi/swapaudit/internal/proc"
+	"github.com/jadmadi/swapaudit/internal/snapshot"
 	"github.com/jadmadi/swapaudit/internal/term"
 	"github.com/jadmadi/swapaudit/internal/triage"
 	"github.com/jadmadi/swapaudit/internal/updater"
@@ -114,6 +115,78 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 	return items
 }
 
+// executeCleanup is a seam so mode tests can prove read-only paths never reach
+// the destructive executor.
+var executeCleanup = cleaner.ExecuteCleanup
+
+type modeFlags struct {
+	json          bool
+	noCommand     bool
+	dryRun        bool
+	yes           bool
+	cleanup       bool
+	interactive   bool
+	noInteractive bool
+}
+
+// validateModes rejects incompatible flag combinations before any scan.
+func validateModes(f modeFlags) error {
+	if f.interactive && f.noInteractive {
+		return errors.New("--interactive and --no-interactive are mutually exclusive")
+	}
+	if f.json {
+		if f.cleanup {
+			return errors.New("--json is read-only and cannot be combined with cleanup flags")
+		}
+		if f.dryRun {
+			return errors.New("--json is read-only and cannot be combined with --dry-run")
+		}
+		if f.yes {
+			return errors.New("--json is read-only and cannot be combined with --yes")
+		}
+		if f.interactive {
+			return errors.New("--json cannot be combined with --interactive")
+		}
+	}
+	if f.interactive {
+		if f.cleanup {
+			return errors.New("--interactive cannot be combined with cleanup flags")
+		}
+		if f.yes {
+			return errors.New("--interactive cannot be combined with --yes")
+		}
+	}
+	if f.noCommand && !f.json {
+		return errors.New("--no-command requires --json")
+	}
+	return nil
+}
+
+// procStatusPath is the JSON preflight target; a seam for hard-failure tests.
+var procStatusPath = "/proc/self/status"
+
+// runJSON performs the read-only scan and writes exactly one document.
+func runJSON(noCommand bool, maxAge, idleThreshold time.Duration, customPatterns []string) int {
+	if _, err := os.Stat(procStatusPath); err != nil {
+		if werr := snapshot.WriteError(os.Stdout, "proc_unavailable", "cannot read /proc/self/status"); werr != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", werr)
+		}
+		return 1
+	}
+
+	now := time.Now()
+	uptimeSec := proc.ReadUptime()
+	sysSwap := proc.ReadSystemSwap()
+	tmpPatterns := append(append([]string{}, cache.DefaultTmpPatterns...), customPatterns...)
+	items := CollectSwapItems(now, uptimeSec, maxAge, idleThreshold, tmpPatterns)
+	doc := snapshot.BuildSnapshot(now, uptimeSec, sysSwap, items, maxAge, idleThreshold, noCommand)
+	if err := snapshot.Write(os.Stdout, doc); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 1
+	}
+	return 0
+}
+
 // Run parses CLI flags and executes the swapaudit command workflow.
 func Run(args []string) int {
 	if len(args) > 0 {
@@ -153,6 +226,10 @@ func Run(args []string) int {
 		ascii          = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
 		showVersion    = fs.Bool("version", false, "Print swapaudit version and exit")
 		noUpdateCheck  = fs.Bool("no-update-check", false, "Disable daily release update check")
+		jsonOutput     = fs.Bool("json", false, "Emit one machine-readable JSON document and exit")
+		noCommand      = fs.Bool("no-command", false, "Omit command lines from JSON output (requires --json)")
+		interactive    = fs.Bool("interactive", false, "Force the interactive action picker (requires a terminal)")
+		noInteractive  = fs.Bool("no-interactive", false, "Disable the interactive action picker")
 	)
 	var customTmpPatterns stringSliceFlag
 	fs.Var(&customTmpPatterns, "tmp-pattern", "Additional /tmp pattern to identify artifacts (repeatable)")
@@ -171,6 +248,24 @@ func Run(args []string) int {
 	if *showVersion {
 		fmt.Println(version.String())
 		return 0
+	}
+
+	cleanupRequested := *cleanUntouched || *cleanAbandoned || *cleanDormant || *cleanOrphaned || *cleanTmp || *cleanAll
+	if err := validateModes(modeFlags{
+		json:          *jsonOutput,
+		noCommand:     *noCommand,
+		dryRun:        *dryRun,
+		yes:           *yes,
+		cleanup:       cleanupRequested,
+		interactive:   *interactive,
+		noInteractive: *noInteractive,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+
+	if *jsonOutput {
+		return runJSON(*noCommand, *maxAge, *idleThreshold, customTmpPatterns)
 	}
 
 	var cachedNotice *updater.UpdateInfo
@@ -236,7 +331,7 @@ func Run(args []string) int {
 	}
 
 	if *cleanUntouched || *cleanAbandoned || *cleanDormant || *cleanOrphaned {
-		cleaner.ExecuteCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
+		executeCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
 	} else {
 		PrintQuickCommands()
 	}

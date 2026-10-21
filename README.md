@@ -45,6 +45,8 @@ They cannot answer three critical triage questions:
 - What can be safely cleaned right now without disrupting running applications?
 
 swapaudit solves this with zero dependencies, sub-second execution, and verified safety guards.
+For comparisons with earlyoom, systemd-oomd, zram, smem, and vmstat, see
+[docs/comparison/](docs/comparison/).
 
 ## Architecture and triage pipeline
 
@@ -256,6 +258,29 @@ Print version information:
 swapaudit --version
 ```
 
+## Machine-readable JSON output
+
+`--json` emits exactly one versioned document to stdout for scripts, statuslines,
+editors, and CI. The mode is read-only and never runs the update check, prints a
+banner, or truncates the item list.
+
+```bash
+swapaudit --json > snapshot.json
+swapaudit --json --no-command > snapshot.json   # omit command lines for logs
+```
+
+The document carries system counters, thresholds, per-category totals, and every
+raw item. Items use a canonical order, nullable fields are explicit, and arrays
+are never `null`. See [docs/json-schema.md](docs/json-schema.md) for the full
+field table, nullability rules, exit codes, and consumer recipes.
+
+```bash
+swapaudit --json | jq -r '.totals.cleanable_bytes'
+```
+
+Cleanup, `--dry-run`, `--yes`, and interactive flags are rejected with exit `2`
+when combined with `--json`.
+
 ## In-place upgrades and release checks
 
 Automated daily background check:
@@ -301,6 +326,8 @@ swapaudit upgrade
 | --idle-threshold <dur>  | 2h       | Idle duration threshold for classifying dormant agents                |
 | --tmp-pattern <pattern> | (list)   | Additional pattern for temporary artifacts in /tmp (repeatable)       |
 | --no-update-check       | false    | Skip background 24-hour release check                                 |
+| --json                  | false    | Emit one stable machine-readable JSON document                        |
+| --no-command            | false    | Omit command lines from JSON output (requires --json)                 |
 | --ascii                 | false    | Use plain ASCII glyphs instead of Unicode box characters              |
 | --no-color              | false    | Disable ANSI color highlighting                                       |
 | -v, --version           | false    | Print swapaudit version and build metadata                            |
@@ -316,6 +343,7 @@ The project follows a standard modular Go architecture:
 - `internal/cleaner`: surgical pruning and process termination with verification guards.
 - `internal/model`: shared data types for memory, processes, and categories.
 - `internal/proc`: kernel `/proc` parsers for status, meminfo, sched, and cmdline.
+- `internal/snapshot`: versioned machine-readable schema and pure document builder.
 - `internal/term`: terminal layout, ANSI color engine, and text width calculations.
 - `internal/triage`: process classification and shell aggregation logic.
 - `internal/updater`: release checking and atomic binary self-upgrades.

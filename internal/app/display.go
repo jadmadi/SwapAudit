@@ -477,6 +477,10 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --no-color                Disable ANSI color styling")
 	fmt.Fprintln(w, "  --ascii                   Use plain ASCII box borders instead of Unicode glyphs")
 	fmt.Fprintln(w, "  --no-update-check         Skip background 24-hour release check")
+	fmt.Fprintln(w, "  --json                    Emit one stable machine-readable JSON document")
+	fmt.Fprintln(w, "  --no-command              Omit command lines from JSON output (requires --json)")
+	fmt.Fprintln(w, "  --interactive             Force the interactive action picker (requires a terminal)")
+	fmt.Fprintln(w, "  --no-interactive          Disable the interactive action picker")
 	fmt.Fprintln(w, "  -v, --version             Print version metadata and exit")
 	fmt.Fprintln(w, "  -h, --help                Show this help message and exit")
 	fmt.Fprintln(w)
@@ -495,5 +499,6 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit --sort age --limit 20         # Inspect older swap occupant processes")
 	fmt.Fprintln(w, "  swapaudit --dry-run --clean-all         # Preview what would be reclaimed")
 	fmt.Fprintln(w, "  swapaudit --clean-tmp                   # Prune stale /tmp build and test caches")
+	fmt.Fprintln(w, "  swapaudit --json --no-command           # Machine-readable document without command lines")
 	fmt.Fprintln(w, "  swapaudit upgrade                       # Upgrade binary to latest release")
 }

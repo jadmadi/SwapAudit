@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "swapaudit",
+    "version": "dev",
+    "commit": "none",
+    "built": "unknown"
+  },
+  "generated_at": "2026-10-21T09:15:04+03:00",
+  "uptime_seconds": 123456.78,
+  "thresholds": {
+    "max_age_seconds": 43200,
+    "idle_threshold_seconds": 7200
+  },
+  "system": {
+    "swap_total_bytes": 18321752064,
+    "swap_used_bytes": 8971677696,
+    "swap_free_bytes": 9350074368,
+    "mem_total_bytes": 33549176832,
+    "mem_used_bytes": 15874695168,
+    "mem_available_bytes": 17674481664,
+    "tmpfs_total_bytes": 16777216000,
+    "tmpfs_used_bytes": 7838310400
+  },
+  "totals": {
+    "items": 5,
+    "process_swap_bytes": 99300147,
+    "tmpfs_cache_bytes": 3148800,
+    "cleanable_bytes": 97205043,
+    "cleanable_process_swap_bytes": 94057267,
+    "cleanable_tmpfs_bytes": 3147776
+  },
+  "summary": [
+    {
+      "category": "abandoned-runs",
+      "items": 1,
+      "swap_bytes": 0,
+      "size_bytes": 2048,
+      "cleanable_items": 1,
+      "cleanable_swap_bytes": 0,
+      "cleanable_size_bytes": 2048
+    },
+    {
+      "category": "active-apps",
+      "items": 1,
+      "swap_bytes": 5242880,
+      "size_bytes": 0,
+      "cleanable_items": 0,
+      "cleanable_swap_bytes": 0,
+      "cleanable_size_bytes": 0
+    },
+    {
+      "category": "active-caches",
+      "items": 1,
+      "swap_bytes": 0,
+      "size_bytes": 1024,
+      "cleanable_items": 0,
+      "cleanable_swap_bytes": 0,
+      "cleanable_size_bytes": 0
+    },
+    {
+      "category": "dormant-agents",
+      "items": 1,
+      "swap_bytes": 94057267,
+      "size_bytes": 0,
+      "cleanable_items": 1,
+      "cleanable_swap_bytes": 94057267,
+      "cleanable_size_bytes": 0
+    },
+    {
+      "category": "untouched-caches",
+      "items": 1,
+      "swap_bytes": 0,
+      "size_bytes": 3145728,
+      "cleanable_items": 1,
+      "cleanable_swap_bytes": 0,
+      "cleanable_size_bytes": 3145728
+    }
+  ],
+  "items": [
+    {
+      "pid": null,
+      "start_ticks": null,
+      "name": "cfg&<x>",
+      "command": "/tmp/cfg&<x>-é",
+      "category": "abandoned-runs",
+      "swap_bytes": 0,
+      "size_bytes": 2048,
+      "effective_size_bytes": 2048,
+      "age_seconds": 50400,
+      "idle_seconds": 50400,
+      "last_active_at": "2026-10-20T19:15:04+03:00",
+      "path": "/tmp/cfg&<x>-é",
+      "cleanable": true
+    },
+    {
+      "pid": 4242,
+      "start_ticks": 99,
+      "name": "gopls",
+      "command": "gopls serve",
+      "category": "active-apps",
+      "swap_bytes": 5242880,
+      "size_bytes": 0,
+      "effective_size_bytes": 5242880,
+      "age_seconds": 3600,
+      "idle_seconds": null,
+      "last_active_at": null,
+      "path": null,
+      "cleanable": false
+    },
+    {
+      "pid": null,
+      "start_ticks": null,
+      "name": "active-cache",
+      "command": "/tmp/active-cache",
+      "category": "active-caches",
+      "swap_bytes": 0,
+      "size_bytes": 1024,
+      "effective_size_bytes": 1024,
+      "age_seconds": 60,
+      "idle_seconds": 1,
+      "last_active_at": "2026-10-21T09:15:03+03:00",
+      "path": "/tmp/active-cache",
+      "cleanable": false
+    },
+    {
+      "pid": 1618347,
+      "start_ticks": 123456789,
+      "name": "chrome-devtools",
+      "command": "chrome-devtools-mcp --port 9222",
+      "category": "dormant-agents",
+      "swap_bytes": 94057267,
+      "size_bytes": 0,
+      "effective_size_bytes": 94057267,
+      "age_seconds": 104880,
+      "idle_seconds": 43980,
+      "last_active_at": "2026-10-20T21:02:04+03:00",
+      "path": null,
+      "cleanable": true
+    },
+    {
+      "pid": null,
+      "start_ticks": null,
+      "name": "go-build123",
+      "command": "/tmp/go-build123",
+      "category": "untouched-caches",
+      "swap_bytes": 0,
+      "size_bytes": 3145728,
+      "effective_size_bytes": 3145728,
+      "age_seconds": 172800,
+      "idle_seconds": 46800,
+      "last_active_at": "2026-10-20T20:15:04+03:00",
+      "path": "/tmp/go-build123",
+      "cleanable": true
+    }
+  ],
+  "warnings": []
+}
