@@ -50,7 +50,7 @@ archives:
   - id: binary
     formats:
       - binary
-    name_template: "swapaudit-{{ .Os }}-{{ .Arch }}"
+    name_template: "swapaudit-{{ .Os }}-{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
 
 checksum:
   name_template: "checksums.txt"
