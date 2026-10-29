@@ -5,6 +5,7 @@ package live
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -145,7 +146,7 @@ func Replay(r io.Reader) ([]sample, error) {
 	for {
 		var raw rawSample
 		err := dec.Decode(&raw)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return out, nil
 		}
 		if err != nil {
