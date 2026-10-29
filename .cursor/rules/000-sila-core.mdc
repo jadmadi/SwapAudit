@@ -8,19 +8,38 @@ alwaysApply: true
 # AGENTS.md — swapaudit
 
 ## 0. Safety Rails (NEVER Do This)
-- No unprompted remote push: Local commits are autonomous; remote push requires explicit user consent.
-- No unauthorized repo creation or namespace re-homing: NEVER run 'gh repo create' or push external/organizational specifications to personal namespaces; fail closed on push/auth hurdles.
+- No unprompted remote push: Local commits are autonomous; remote push requires user consent.
+- No unauthorized repo creation or re-homing: NEVER run 'gh repo create' or push external specs to personal namespaces; fail closed on auth hurdles.
 
 ## 1. Working Relationship & Discipline
-- Simplified, concise, and straight to the point.
+- Concise and direct.
+- Terminal Markdown: Keep visible line and table width under 80 chars; no hard breaks inside bullets or links.
+- Decision Brief & `/adoo` Receipts: Lead with 1-line verdict ("X happens because Y, confirmed by Z"), compact receipt/risk table, file links, and next action. No 1-5 scores.
 - Verified Repo Runbook Primacy: Never guess commands; verify exit code 0 locally.
-- Closed-Loop Goal Attribution (6 Steps): When completing a goal package under `goals/<slug>/`:
-  1. Mark every completed task `- [x]` in `goals/<slug>/plan.md` (unchecked tasks block the `implemented` transition).
-  2. Write verification evidence with an explicit standalone `Verdict: PASS` declaration when using markdown evidence.
-  3. Commit the implementation with `(goals/<slug>/goal.md)` or `[goal: <slug>]` under a `feat:`, `fix:`, `refactor:`, `perf:`, or `chore:` prefix (`docs:` and `test:` commits are ignored by the goal matcher).
-  4. Certify the goal with `sila goals certify <slug> --evidence=goals/<slug>/evidence.md` or `sila goals audit <slug>`.
-  5. Run `sila goals` to reconcile `goals/README.md` and commit the updated registry and certification artifacts.
-  6. Verify the stop condition: `sila goals --json` reports `status: "implemented"`, `verification_status: "verified"`, and `unverified_count: 0` for delivered goals, with a clean `git status`.
+- Closed-Loop Goal Attribution (6 Steps) for `goals/<slug>/`:
+  1. Check every completed task `- [x]` in `goals/<slug>/plan.md`.
+  2. Write markdown evidence with a standalone `Verdict: PASS` line.
+  3. Commit with `(goals/<slug>/goal.md)` or `[goal: <slug>]` under `feat:`, `fix:`, `refactor:`, `perf:`, or `chore:` (`docs:`/`test:` ignored).
+  4. Certify via `sila goals certify <slug> --evidence=goals/<slug>/evidence.md` or `sila goals audit <slug>`.
+  5. Run `sila goals` to reconcile `goals/README.md` and commit receipts.
+  6. Verify `sila goals --json` reports `status: "implemented"`, `verification_status: "verified"`, `unverified_count: 0`, and clean `git status`.
+
+## Sila Trigger Contract
+
+Memory writes are required by the goal contract and enforced by `sila gate`.
+- `sila prime` (start) → briefing + goals.
+- `sila recall "<symptom>"` (stuck) → prior resolutions.
+- `sila memo "<directive>" --files=...` (decision) → grounded directive.
+- `sila lesson "<symptom>" --cause=... --fix=...` (solved) → grounded lesson.
+- `sila case "<intent>" --approach=... --invariant=...` (pattern) → case record.
+- `sila facts verify` (grounding) → file/ledger evidence.
+- `sila gate` (before commit) → deterministic quality receipt.
+- `sila handoff "<summary>" --open=...` (end) → handoff record.
+- `sila sync` (after changes) → cross-harness continuity.
+- `sila salam`, `sila guide`, `docs/reference.md` → detail.
+- Prior research/specs (BEFORE grep/find): `sila search "<q>" --omni` (`omni_search`), `sila search expand <id>` (`get_message_context`), `sila doc search "<q>"` (`search_docs`).
+- Activity/domains/review/skills: `sila standup last 24h`, `sila digest --since=24h`, `sila recap`; `sila guide` (`get_operational_guidebook`), `sila learn`, `sila persona`, `sila hire --for-goal=<slug>`, `sila audit` (`audit_goal`), `sila skill` (`skill_search`, `skill_load`).
+- Symbols/decisions: `sila edit-check --symbol=<sym>`, `sila safe-delete --symbol=<sym>`, `sila note --symbol=<sym>`, `sila decision` (`create_decision`), `sila vision triage`.
 
 ---
 
@@ -37,18 +56,4 @@ alwaysApply: true
 - 9. Release Lifecycle & Value Changelog: implement a 24-hour cached daily version check, offer direct upgrades, provide a human-readable benefits-focused changelog, and credit contributors.
 
 ---
-
-
-## Sila Trigger Contract
-
-- First command in a repository: `sila salam` prints this loop with live next steps; run `sila --help` to inspect all available tools.
-- Task start: run `sila heal` (idempotent; sila's rules, plugin, and MCP entry only, no project git hooks; preview with `--dry-run`), commit refreshed managed files, then `sila prime` and `sila goals ready`.
-- Goal completion (6 steps): check every `plan.md` task -> write evidence with `Verdict: PASS` -> commit with `(goals/<slug>/goal.md)` under `feat|fix|refactor|perf|chore` -> `sila goals certify <slug> --evidence=...` or `sila goals audit <slug>` -> run `sila goals` to sync the registry -> verify `sila goals --json` reports `unverified_count: 0` and `git status` is clean.
-- Stuck on an error, a package, or an unfamiliar API: run `sila recall "<error or symptom>"` before web search or a workaround.
-- Problem solved: record it with `sila lesson "<symptom>" --cause=... --fix=... --files=...`.
-- Decision made: record it with `sila memo "<directive>"`.
-- Session end: `sila handoff "<summary>" --open="..."` and `sila sync` (or the session-end hook).
-- Workspace search (`fffind`, `ffgrep`, ripgrep, rtk) finds code in the current tree; `sila` is cross-harness continuity: past sessions, decisions, and lessons. Use both.
-- Sila itself gets in the way or misses something: run `sila feedback "<what happened>" --type=issue|tip|idea` and keep working.
-
 <!-- sila:end -->
