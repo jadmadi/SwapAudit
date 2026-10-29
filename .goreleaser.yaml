@@ -39,7 +39,8 @@ upx:
 
 archives:
   - id: tarball
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
@@ -47,7 +48,8 @@ archives:
       - WaqfDPL-1.0.md
       - README.md
   - id: binary
-    format: binary
+    formats:
+      - binary
     name_template: "swapaudit-{{ .Os }}-{{ .Arch }}"
 
 checksum:
