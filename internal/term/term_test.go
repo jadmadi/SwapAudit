@@ -170,7 +170,7 @@ func TestRenderTableWidths(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	lines := strings.Split(strings.Trim(output, "\r\n"), "\n")
@@ -271,7 +271,7 @@ func TestPrintBoxHeader(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	lines := strings.Split(strings.Trim(output, "\r\n"), "\n")
@@ -303,7 +303,7 @@ func TestPrintUpdateNotice(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if !strings.Contains(output, "A new release of swapaudit is available") {
