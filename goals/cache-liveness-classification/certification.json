@@ -1,0 +1,11 @@
+{
+  "goal_slug": "cache-liveness-classification",
+  "certified_at": "2026-10-20T06:20:58.319512761Z",
+  "certified_by": "command-code",
+  "evidence_file": "/home/jad/scripts/active/swapaudit/goals/cache-liveness-classification/evidence.md",
+  "note": "Implementation, tests, and goal-specific evidence verified.",
+  "verified": true,
+  "facts_passed": 1,
+  "facts_total": 1,
+  "evidence_kind": "review_document"
+}

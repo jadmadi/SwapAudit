@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a capability or behavior change.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature work is frozen until demand validation is complete. Proposals are welcome,
+        but new scanners, agent runtimes, JSON output, package-manager packaging, GUI,
+        daemon, telemetry, and pricing work are deferred. See goals/README.md.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and current workaround
+      description: What are you trying to do, and what do you do today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope check
+      description: Does the proposal fit the Linux-only, local-CLI, no-telemetry governance?
+      options:
+        - Fits the current scope
+        - Needs a governance decision
+        - Not sure
+    validations:
+      required: true
