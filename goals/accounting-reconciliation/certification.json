@@ -1,0 +1,11 @@
+{
+  "goal_slug": "accounting-reconciliation",
+  "certified_at": "2026-10-20T06:20:40.288523934Z",
+  "certified_by": "command-code",
+  "evidence_file": "/home/jad/scripts/active/swapaudit/goals/accounting-reconciliation/evidence.md",
+  "note": "Implementation, tests, live reconciliation arithmetic, and full gate verified.",
+  "verified": true,
+  "facts_passed": 1,
+  "facts_total": 1,
+  "evidence_kind": "review_document"
+}

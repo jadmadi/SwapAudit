@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible defect in SwapAudit.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, tokens, private file contents, or other users' data.
+        For security vulnerabilities, use SECURITY.md instead of a public issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: SwapAudit version
+      description: Output of `swapaudit --version`.
+      placeholder: "swapaudit v0.1.0 (commit: ..., built: ...)"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and kernel
+      description: Output of `uname -a` and the distro version.
+      placeholder: "Linux 6.x ... Ubuntu 24.04"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and flags
+      description: The exact command you ran.
+      placeholder: "swapaudit --dry-run --clean-all"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the sanitized output or error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dry_run
+    attributes:
+      label: Dry-run output
+      description: If the issue involves cleanup, include `swapaudit --dry-run` output.
+      render: text
+
+  - type: checkboxes
+    id: sanitized
+    attributes:
+      label: Sanitization
+      options:
+        - label: I removed secrets, tokens, private paths, and other users' data.
+          required: true
