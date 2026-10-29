@@ -39,7 +39,9 @@ func TestPruneTmpTargetsDryRun(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy failed: %v", err)
+	}
 	output := buf.String()
 
 	if reclaimed != 1024*1024*15 {
@@ -128,7 +130,9 @@ func TestKillProcessTargetsDryRun(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy failed: %v", err)
+	}
 	output := buf.String()
 
 	if reclaimed != 1024*1024*20 {
@@ -187,7 +191,9 @@ func TestExecuteCleanupDryRun(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy failed: %v", err)
+	}
 	output := buf.String()
 
 	if !strings.Contains(output, "Would reclaim 15.0 MB tmp, 40.0 MB swap") {
