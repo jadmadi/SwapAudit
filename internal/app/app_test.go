@@ -31,7 +31,7 @@ func TestRunVersion(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
@@ -56,7 +56,7 @@ func TestRunInvalidSort(t *testing.T) {
 	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 2 {
@@ -81,7 +81,7 @@ func TestRunDryRunCleanAll(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
@@ -106,7 +106,7 @@ func TestRunDefaultExecution(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
@@ -647,7 +647,7 @@ func TestRunUpgradeHelp(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
@@ -672,7 +672,7 @@ func TestRunNoUpdateCheck(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 
 	if code != 0 {
 		t.Errorf("Run(--no-update-check) exit code = %d, want 0", code)
@@ -708,7 +708,7 @@ func TestRunCachedUpdateNotice(t *testing.T) {
 	os.Stdout = oldStdout
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if code != 0 {
