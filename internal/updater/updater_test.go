@@ -31,6 +31,12 @@ func TestCompareVersions(t *testing.T) {
 		{"v1.0.0", "v1.0.0-rc.1", 1},
 		{"dev", "v0.1.0", -1},
 		{"v0.1.0", "dev", 1},
+		{"v0.1.0-59-g2c13a5e", "v0.1.0", 1},
+		{"v0.1.0", "v0.1.0-59-g2c13a5e", -1},
+		{"v0.1.0-59-g2c13a5e-dirty", "v0.1.0", 1},
+		{"v0.1.0-63-gb7b704e", "v0.1.0-59-g2c13a5e", 1},
+		{"v0.1.0-59-g2c13a5e", "v0.2.0", -1},
+		{"v0.1.0-dirty", "v0.1.0", 0},
 	}
 
 	for _, tt := range tests {
@@ -59,6 +65,10 @@ func TestIsNewer(t *testing.T) {
 		{"v0.1.0-dirty", "v0.1.1", true},
 		{"v0.1.0", "v0.1.0-rc.1", false},
 		{"v0.1.0-rc.1", "v0.1.0", true},
+		{"v0.1.0-59-g2c13a5e", "v0.1.0", false},
+		{"v0.1.0-59-g2c13a5e", "v0.1.1", true},
+		{"v0.1.0-59-g2c13a5e-dirty", "v0.1.0", false},
+		{"v0.1.0-dirty", "v0.1.0", false},
 	}
 
 	for _, tt := range tests {

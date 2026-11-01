@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -112,31 +113,38 @@ func cleanVersion(v string) string {
 	return v
 }
 
-// parseSemVer parses a version string into (major, minor, patch, prerelease).
-func parseSemVer(v string) (int, int, int, string, bool) {
+// gitDescribeSuffix matches the commit-distance suffix produced by
+// `git describe` for builds after a tag, e.g. "59-g2c13a5e" in
+// "v0.1.0-59-g2c13a5e" or "59-g2c13a5e-dirty" for a modified tree.
+var gitDescribeSuffix = regexp.MustCompile(`^(\d+)-g[0-9a-fA-F]+(?:-dirty)?$`)
+
+// parseSemVer parses a version string into (major, minor, patch, prerelease, commitsAhead).
+// commitsAhead is non-zero for git-describe snapshots such as v0.1.0-59-g2c13a5e,
+// which are builds after the v0.1.0 tag rather than prereleases of it.
+func parseSemVer(v string) (int, int, int, string, int, bool) {
 	v = cleanVersion(v)
 	if v == "" || v == "dev" || v == "none" || strings.HasPrefix(v, "dev+") {
-		return 0, 0, 0, v, false
+		return 0, 0, 0, v, 0, false
 	}
 
-	prerelease := ""
+	suffix := ""
 	if idx := strings.Index(v, "-"); idx >= 0 {
-		prerelease = v[idx+1:]
+		suffix = v[idx+1:]
 		v = v[:idx]
 	}
 
 	parts := strings.Split(v, ".")
 	if len(parts) < 2 {
-		return 0, 0, 0, prerelease, false
+		return 0, 0, 0, suffix, 0, false
 	}
 
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return 0, 0, 0, prerelease, false
+		return 0, 0, 0, suffix, 0, false
 	}
 	minor, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return 0, 0, 0, prerelease, false
+		return 0, 0, 0, suffix, 0, false
 	}
 	patch := 0
 	if len(parts) >= 3 {
@@ -146,14 +154,22 @@ func parseSemVer(v string) (int, int, int, string, bool) {
 		}
 	}
 
-	return major, minor, patch, prerelease, true
+	if m := gitDescribeSuffix.FindStringSubmatch(suffix); m != nil {
+		ahead, _ := strconv.Atoi(m[1])
+		return major, minor, patch, "", ahead, true
+	}
+	if suffix == "dirty" {
+		return major, minor, patch, "", 0, true
+	}
+
+	return major, minor, patch, suffix, 0, true
 }
 
 // CompareVersions compares two semantic version strings.
 // Returns -1 if v1 < v2, 0 if v1 == v2, and 1 if v1 > v2.
 func CompareVersions(v1, v2 string) int {
-	maj1, min1, pat1, pre1, ok1 := parseSemVer(v1)
-	maj2, min2, pat2, pre2, ok2 := parseSemVer(v2)
+	maj1, min1, pat1, pre1, ahead1, ok1 := parseSemVer(v1)
+	maj2, min2, pat2, pre2, ahead2, ok2 := parseSemVer(v2)
 
 	if !ok1 && !ok2 {
 		return strings.Compare(cleanVersion(v1), cleanVersion(v2))
@@ -191,7 +207,18 @@ func CompareVersions(v1, v2 string) int {
 	if pre1 == "" && pre2 != "" {
 		return 1
 	}
-	return strings.Compare(pre1, pre2)
+	if pre1 != pre2 {
+		return strings.Compare(pre1, pre2)
+	}
+
+	// A git-describe snapshot is newer than its base tag.
+	if ahead1 != ahead2 {
+		if ahead1 < ahead2 {
+			return -1
+		}
+		return 1
+	}
+	return 0
 }
 
 // IsNewer returns true if target represents a newer release than current.
@@ -199,12 +226,12 @@ func IsNewer(current, target string) bool {
 	if target == "" {
 		return false
 	}
-	_, _, _, _, okTarget := parseSemVer(target)
+	_, _, _, _, _, okTarget := parseSemVer(target)
 	if !okTarget {
 		return false
 	}
 
-	_, _, _, _, okCurrent := parseSemVer(current)
+	_, _, _, _, _, okCurrent := parseSemVer(current)
 	if !okCurrent {
 		// Non-semver builds like "dev" or "none" are superseded by real releases
 		return true
