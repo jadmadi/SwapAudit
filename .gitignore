@@ -22,3 +22,8 @@ build/
 
 # Ephemeral goal claim locks (managed by sila)
 goals/*/claim.json
+
+# Sila runtime state (managed by sila)
+.sila/state/
+.sila/charters/
+.sila/locks/

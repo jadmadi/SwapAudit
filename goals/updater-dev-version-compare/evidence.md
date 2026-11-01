@@ -24,4 +24,22 @@ prerelease. `CompareVersions` then ranked the release tag above the snapshot.
   - cached `latest_version: v0.1.0` -> no update banner.
   - cached `latest_version: v0.2.0` -> banner shown.
 
+## Memory Writes
+
+```json
+{
+  "schema": "sila/memory-writes/v1",
+  "goal_slug": "updater-dev-version-compare",
+  "prime": {"ran": true},
+  "recall": [
+    {"query": "update notice git describe version comparison prerelease newer", "matches": 75}
+  ],
+  "memos": [],
+  "lessons": [{"id": "fact_c839918e"}],
+  "cases": [],
+  "facts_verify": {"exit_code": 0},
+  "handoff": {"id": "hoff_b7ec4feceff3"}
+}
+```
+
 Verdict: PASS
