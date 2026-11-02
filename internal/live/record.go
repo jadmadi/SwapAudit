@@ -135,6 +135,10 @@ func rawSystem(sys model.SystemSwap) snapshot.System {
 	return snapshot.System{
 		SwapTotalBytes: nn(sys.SwapTotal), SwapUsedBytes: nn(sys.SwapUsed), SwapFreeBytes: nn(sys.SwapFree),
 		MemTotalBytes: nn(sys.MemTotal), MemUsedBytes: nn(sys.MemUsed), MemAvailableBytes: nn(sys.MemAvail),
+		MemFreeBytes: nn(sys.MemFree), BuffersBytes: nn(sys.Buffers), CachedBytes: nn(sys.Cached),
+		SReclaimableBytes: nn(sys.SReclaimable), ShmemBytes: nn(sys.Shmem),
+		DirtyBytes: nn(sys.Dirty), WritebackBytes: nn(sys.Writeback),
+		PageCacheBytes:  nn(sys.PageCacheBytes()),
 		TmpfsTotalBytes: nn(sys.TmpfsSize), TmpfsUsedBytes: nn(sys.TmpfsUsed),
 	}
 }
@@ -198,6 +202,9 @@ func toSystem(s snapshot.System) model.SystemSwap {
 	return model.SystemSwap{
 		SwapTotal: s.SwapTotalBytes, SwapUsed: s.SwapUsedBytes, SwapFree: s.SwapFreeBytes,
 		MemTotal: s.MemTotalBytes, MemUsed: s.MemUsedBytes, MemAvail: s.MemAvailableBytes,
+		MemFree: s.MemFreeBytes, Buffers: s.BuffersBytes, Cached: s.CachedBytes,
+		SReclaimable: s.SReclaimableBytes, Shmem: s.ShmemBytes,
+		Dirty: s.DirtyBytes, Writeback: s.WritebackBytes,
 		TmpfsSize: s.TmpfsTotalBytes, TmpfsUsed: s.TmpfsUsedBytes,
 	}
 }

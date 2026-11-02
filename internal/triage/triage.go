@@ -37,9 +37,9 @@ func CategorizeProcess(comm string, argv []string, pid, ppid int, isOrphaned boo
 		for _, arg := range argv {
 			baseArg := filepath.Base(arg)
 			if arg == "--conversation" || arg == "chrome-devtools-mcp" || baseArg == "chrome-devtools-mcp" ||
-				strings.Contains(arg, "mcp") || strings.Contains(baseArg, "mcp") ||
-				strings.Contains(arg, "commandcode") || strings.Contains(arg, "command-code") ||
-				arg == "--stdio" || arg == "serve" || arg == "--service" {
+				strings.HasPrefix(baseArg, "mcp-server-") ||
+				strings.HasSuffix(baseArg, "-mcp") || strings.HasSuffix(baseArg, "-mcp-server") ||
+				strings.Contains(arg, "commandcode") || strings.Contains(arg, "command-code") {
 				isAgent = true
 				break
 			}

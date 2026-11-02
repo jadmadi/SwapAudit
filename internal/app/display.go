@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/jadmadi/swapaudit/internal/model"
+	"github.com/jadmadi/swapaudit/internal/proc"
+	"github.com/jadmadi/swapaudit/internal/reclaim"
 	"github.com/jadmadi/swapaudit/internal/term"
 	"github.com/jadmadi/swapaudit/internal/triage"
 )
@@ -48,6 +50,55 @@ func PrintHeader(s model.SystemSwap) {
 	tmpFree := s.TmpfsSize - s.TmpfsUsed
 	fmt.Printf("  %-5s %s %5.1f%% %8s / %8s (free %s)\n\n",
 		"/tmp", tmpBar, tmpPct, term.FormatBytes(s.TmpfsUsed), term.FormatBytes(s.TmpfsSize), term.FormatBytes(tmpFree))
+}
+
+// PrintReclaimReadiness renders whether swap can be drained back into RAM
+// without rebooting, plus the page-cache reclaim estimate and PSI.
+func PrintReclaimReadiness(plan reclaim.Plan, pressure proc.MemoryPressure) {
+	term.PrintBoxHeader("No-Reboot Reclaim Readiness")
+
+	switch plan.BlockReason {
+	case reclaim.BlockNoSwap:
+		fmt.Println("  Swap drain  no swap configured")
+	case reclaim.BlockAlreadyClean:
+		fmt.Println("  Swap drain  already clean (0 B used); no swapoff/swapon churn needed")
+	case reclaim.BlockZramOnly:
+		fmt.Println("  Swap drain  zram only; draining decompresses into RAM and is skipped")
+		fmt.Println("  Next        add --include-zram only if you accept that trade-off")
+	case reclaim.BlockInsufficient:
+		fmt.Printf("  Swap drain  BLOCKED; need %s more available RAM\n", term.FormatBytes(-plan.Headroom))
+		fmt.Printf("              used swap %s + reserve %s > available %s\n",
+			term.FormatBytes(plan.AllDrainableUsed), term.FormatBytes(plan.Reserve), term.FormatBytes(plan.System.MemAvail))
+		fmt.Println("  Next        close applications, then: swapaudit reclaim --dry-run")
+	default:
+		if plan.Partial {
+			fmt.Printf("  Swap drain  partial; %d of %d device(s), %s -> RAM\n",
+				plan.DrainableDevices, plan.DrainableDevices+plan.SkippedDevices, term.FormatBytes(plan.DrainableUsed))
+			fmt.Printf("              %s remains in swap (insufficient headroom)\n",
+				term.FormatBytes(plan.SkippedForHeadroom))
+		} else {
+			fmt.Printf("  Swap drain  feasible; %d device(s), %s -> RAM\n",
+				plan.DrainableDevices, term.FormatBytes(plan.DrainableUsed))
+		}
+		fmt.Printf("              reserve %s, headroom %s\n",
+			term.FormatBytes(plan.Reserve), term.FormatBytes(plan.SelectedHeadroom))
+		fmt.Println("  Next        sudo swapaudit reclaim --dry-run")
+	}
+
+	if len(plan.Devices) > 0 {
+		parts := make([]string, 0, len(plan.Devices))
+		for _, dp := range plan.Devices {
+			parts = append(parts, fmt.Sprintf("%s (%s)", dp.Device.Filename, dp.Device.Type))
+		}
+		fmt.Printf("  Devices     %s\n", strings.Join(parts, ", "))
+	}
+
+	fmt.Printf("  Page cache  %s reclaimable with: sudo swapaudit reclaim --drop-caches\n",
+		term.FormatBytes(plan.System.PageCacheBytes()))
+	if pressure.Available {
+		fmt.Printf("  Pressure    some %.2f / full %.2f (avg10)\n", pressure.SomeAvg10, pressure.FullAvg10)
+	}
+	fmt.Println()
 }
 
 // PrintActionableSection renders the actionable reclaim candidates table.
@@ -521,9 +572,22 @@ func PrintQuickCommands() {
 	cmd("--clean-dormant", "End dormant agent sessions (> 2h idle)")
 	cmd("--clean-orphaned", "End orphaned agent sessions whose parent shell died")
 	cmd("--clean-tmp", "Clean all stale /tmp caches (untouched + abandoned)")
-	cmd("--clean-all", "Run all cleanup actions (untouched + abandoned + dormant + orphaned)")
+	cmd("--clean-all", "Run safe cleanup (untouched + abandoned + dormant)")
 	cmd("--dry-run", "Preview cleanup actions without touching files or processes")
 	cmd("upgrade", "Upgrade swapaudit to the latest released version")
+	fmt.Println()
+	fmt.Println("  " + term.Bold("Reclaim without reboot:"))
+	raw := func(cmdline, comment string) {
+		vis := term.StrWidth(cmdline)
+		pad := 40 - vis
+		if pad < 1 {
+			pad = 1
+		}
+		fmt.Printf("  %s%s # %s\n", term.Cyan(cmdline), strings.Repeat(" ", pad), comment)
+	}
+	raw("sudo swapaudit reclaim --dry-run", "Show swap drain feasibility and headroom")
+	raw("sudo swapaudit reclaim --drain-swap", "Drain swap back into RAM (no reboot)")
+	raw("sudo swapaudit reclaim --drop-caches", "Drop clean page cache and dentries")
 	fmt.Println()
 }
 
@@ -535,12 +599,14 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit [FLAGS]")
 	fmt.Fprintln(w, "  swapaudit sample [--once|--stream] [FLAGS]")
 	fmt.Fprintln(w, "  swapaudit watch [FLAGS]")
+	fmt.Fprintln(w, "  swapaudit reclaim [FLAGS]")
 	fmt.Fprintln(w, "  swapaudit upgrade")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "COMMANDS:")
 	fmt.Fprintln(w, "  upgrade                   Check GitHub releases and upgrade swapaudit in place")
 	fmt.Fprintln(w, "  sample                    Headless sampler with rates, attribution, and a gated ETA")
 	fmt.Fprintln(w, "  watch                     Foreground threshold notifications over the sampler")
+	fmt.Fprintln(w, "  reclaim                   Drain swap into RAM and optionally drop page cache")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "AUDIT & DISPLAY FLAGS:")
 	fmt.Fprintln(w, "  --sort <size|swap|ram|age> Sort column for occupant table (default: size)")
@@ -565,7 +631,7 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --clean-dormant           Stop dormant AI agent processes (> 2h idle)")
 	fmt.Fprintln(w, "  --clean-orphaned          End orphaned agent processes whose parent shell died")
 	fmt.Fprintln(w, "  --clean-tmp               Clean all stale /tmp caches (untouched + abandoned)")
-	fmt.Fprintln(w, "  --clean-all               Execute all safe cleanup actions")
+	fmt.Fprintln(w, "  --clean-all               Clean safe groups (untouched + abandoned + dormant)")
 	fmt.Fprintln(w, "  --dry-run                 Simulate cleanup actions without touching files/processes")
 	fmt.Fprintln(w, "  -y, --yes                 Bypass confirmation prompts during cleanup")
 	fmt.Fprintln(w)
@@ -579,5 +645,8 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit sample --once                 # One JSON document with rates and movers")
 	fmt.Fprintln(w, "  swapaudit sample --stream --interval=1s # NDJSON samples until a signal")
 	fmt.Fprintln(w, "  swapaudit watch --eta=15m --pressure=90 # Foreground threshold notifications")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --dry-run       # Check swap drain feasibility")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --drain-swap    # Clean swap without rebooting")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --drop-caches   # Drop clean page cache")
 	fmt.Fprintln(w, "  swapaudit upgrade                       # Upgrade binary to latest release")
 }
