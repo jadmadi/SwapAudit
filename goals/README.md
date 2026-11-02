@@ -27,11 +27,11 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 6. **Auto-Reconciliation**: Run `sila goals` to scan commits, mark 🟢 **Implemented**, and clear the claim lock.
 
 ## Summary
-- **Total Goals**: 26
+- **Total Goals**: 27
 - 🟡 **Ready to Execute (Pending)**: 1 (0 independent ⚡, 1 unblocked 🔗)
-- 🟢 **Implemented**: 25 (25 verified 📜, 0 unverified)
-- 🎯 **By Tier**: 13 immediate (Tier 1), 11 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 849/894 completed (94%)
+- 🟢 **Implemented**: 26 (26 verified 📜, 0 unverified)
+- 🎯 **By Tier**: 13 immediate (Tier 1), 12 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
+- 📋 **Execution Tasks Progress**: 855/900 completed (95%)
 
 ---
 
@@ -54,6 +54,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`update-check-consent-disclosure`](update-check-consent-disclosure/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `31372b3` |
 | [`security-contact-consolidation`](security-contact-consolidation/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `bf78d9f` |
 | [`security-hardening-guards`](security-hardening-guards/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `fc6640d` |
+| [`ai-cli-vps-coverage`](ai-cli-vps-coverage/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `9fedb41` |
 | [`ansi-truncate-rendering`](ansi-truncate-rendering/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `d1d4336` |
 | [`cache-mtime-propagation-tests`](cache-mtime-propagation-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `003aaa9` |
 | [`cleaner-interactive-tests`](cleaner-interactive-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `3162132` |
