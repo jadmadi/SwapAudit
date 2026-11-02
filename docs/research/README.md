@@ -11,7 +11,7 @@ This is qualitative research plus a public install test. It is not a statistical
 - Protocol and interview script: ready.
 - Public install test: **complete** — public downloads, `go install`, live upgrade, and Debian/Alpine container smoke tests passed.
 - Five interviews: **not started** — requires five consenting target users.
-- Public announcement: **drafted, not posted** — see `docs/marketing/x-launch.md`.
+- Public announcement: **drafted privately, not posted**; the draft is not in the public tree.
 - 14-day download/issue measurement: **not started** — requires the announcement and elapsed time.
 
 See [`install-test.md`](install-test.md) for the public install evidence.
@@ -70,4 +70,4 @@ These are proposed decision criteria, not measured market data.
 
 - Feature freeze: [`GOVERNANCE.md`](../../GOVERNANCE.md).
 - Goal: [`goals/public-install-demand-validation/goal.md`](../../goals/public-install-demand-validation/goal.md).
-- Business review: `docs/business-reviews/2026-10-19-swapaudit-full-review.md`.
+- Business review: archived locally; not published (internal commercial analysis).

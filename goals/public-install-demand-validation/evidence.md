@@ -36,7 +36,7 @@ The published amd64 binary also ran in Debian bookworm-slim and Alpine 3.20 cont
 ## Still outstanding
 
 - Five consenting target-user interviews (`2026-10-19-interviews.md` not created).
-- One public announcement (draft in `docs/marketing/x-launch.md`; not posted).
+- One public announcement (draft kept privately; not posted).
 - Asset download counts at day 1, 7, and 14.
 - Issue/reply inventory.
 - Dated `docs/research/decision.md` with Proceed/Narrow/Stop/Inconclusive.

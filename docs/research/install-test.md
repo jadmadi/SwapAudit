@@ -76,7 +76,7 @@ without permission.
 
 ## Next steps
 
-1. Review and post the announcement using `docs/marketing/x-launch.md`.
+1. Review and post the announcement using the private launch draft.
 2. Record asset download counts at day 1, 7, and 14.
 3. Complete five interviews and write `decision.md`.
 4. Capture the permalink for the 2026-11-02 X reply.
