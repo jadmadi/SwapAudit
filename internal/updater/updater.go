@@ -330,7 +330,6 @@ func CheckDailyUpdate(currentVersion string) (*UpdateInfo, error) {
 
 // CheckDailyUpdateWithContext checks for an available release update with context cancellation support.
 func CheckDailyUpdateWithContext(ctx context.Context, currentVersion string) (*UpdateInfo, error) {
-
 	path := CacheFilePath()
 	now := time.Now()
 
