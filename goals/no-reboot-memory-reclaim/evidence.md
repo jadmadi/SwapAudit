@@ -189,9 +189,9 @@ exit 2
 | Allocated-block accounting | `TestAllocatedBytesUsesBlocks`, `TestScanTmpDirectoriesUsesAllocatedBlocks` | PASS |
 | `--clean-all` excludes orphaned | `TestSelectCleanup/all_excludes_orphaned` | PASS |
 
-## 5. Live Limitation
+## 5. Live Limitation (resolved)
 
-This host has `0 B` used swap and no passwordless root:
+At certification time this host had `0 B` used swap and no passwordless root:
 
 ```text
 $ sudo -n true
@@ -205,6 +205,9 @@ restore paths. The read-only live run proves the planner reads the real
 `/proc/swaps` and `/proc/meminfo`. The disposable swap-file protocol in
 `docs/reclaim.md#verification-protocol` is the live root test for an operator.
 
+Resolved on 2026-11-02 with a user-approved `pkexec` run. Section 7 records the
+live `swapoff`/`swapon` drain of a disposable swap file.
+
 ## 6. Known Follow-Ups
 
 - Cache open-handle, cwd, and mapped-file liveness is still a design follow-up.
@@ -213,6 +216,142 @@ restore paths. The read-only live run proves the planner reads the real
 - Explicit per-device selection (`--device`) is not implemented; partial
   selection is automatic.
 - `memory.reclaim` and `compact_memory` remain non-goals.
+
+## 7. Live Drain Verification
+
+Run: 2026-11-02T17:36:32+03:00, kernel `6.12.113+deb13-amd64`, binary
+`swapaudit v0.1.0-73-g31f9c52`. Root was obtained with a user-approved
+`pkexec` prompt on the running KDE polkit agent; the agent cannot run `sudo`
+because the global OpenCode config denies `sudo *`.
+
+Target: disposable 1 GiB disk-backed file `/var/tmp/swapaudit-live.swap`
+at priority 100. `/dev/nvme0n1p3`, the real 17 GiB swap partition, was never
+modified.
+
+### Before
+
+```text
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+
+               total        used        free      shared  buff/cache   available
+Mem:           31994       13675       10185        2535       11133       18319
+Swap:          17472           0       17472
+```
+
+### Test file enabled and pages forced into it
+
+`memhold` (512 MiB anonymous buffer, 4 KiB pages, `MADV_PAGEOUT`) reported
+`MADV_PAGEOUT ok on 128/128 chunks`. The test file took 522240 KiB.
+
+```text
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+/var/tmp/swapaudit-live.swap            file		1048572		522240		100
+
+               total        used        free      shared  buff/cache   available
+Mem:           31994       14147        8675        2540       12190       17847
+Swap:          18496         510       17986
+```
+
+### Dry run
+
+```text
+SYSTEM RECLAIM
+------------------------------------------------------------------
+  Swap         510.0 MB used / 18.1 GB total across 2 device(s)
+  Device       /dev/nvme0n1p3         partition 0 B used / 17.1 GB  already empty
+  Device       /var/tmp/swapaudit-... file      510.0 MB used / 1024.0 MB
+  RAM          17.4 GB available / 31.2 GB total
+  Reserve      3.1 GB (10% of RAM, floor 512.0 MB)
+  Headroom     13.8 GB after drain
+  Pressure     some 0.00 / full 0.00 (avg10)
+  Page cache   9.4 GB reclaimable with --drop-caches (root)
+  Plan         drain 1 device(s), 510.0 MB -> RAM, feasible
+  Command      swapoff /var/tmp/swapaudit-live.swap && swapon -p 100 /var/tmp/swapaudit-live.swap
+
+  Dry run     would drain 1 device(s); no commands executed
+```
+
+### Drain receipt
+
+`swapaudit reclaim --drain-swap --yes --json` exited `0` with empty stderr.
+
+```json
+{
+  "schema_version": 1,
+  "action": "drain-swap",
+  "dry_run": false,
+  "root": true,
+  "feasible": true,
+  "partial": false,
+  "reserve_bytes": 3354918502,
+  "headroom_bytes": 14812201370,
+  "all_headroom_bytes": 14812201370,
+  "skipped_for_headroom_bytes": 0,
+  "before": {
+    "swap_used_bytes": 534773760,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18701893632,
+    "mem_free_bytes": 9084682240,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "after": {
+    "swap_used_bytes": 0,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18172604416,
+    "mem_free_bytes": 8555393024,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "devices": [
+    {
+      "filename": "/var/tmp/swapaudit-live.swap",
+      "type": "file",
+      "priority": 100,
+      "used_before_bytes": 534773760,
+      "drained": true,
+      "restored": true
+    }
+  ],
+  "result": "clean",
+  "errors": []
+}
+```
+
+### After the drain
+
+```text
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+/var/tmp/swapaudit-live.swap            file		1048572		0		100
+
+               total        used        free      shared  buff/cache   available
+Mem:           31994       14658        8164        2540       12190       17336
+Swap:          18496           0       18496
+```
+
+### Checks
+
+| Check | Expected | Observed | Result |
+| --- | --- | --- | --- |
+| exit code | `0` | `0` | PASS |
+| `result` | `clean` | `clean` | PASS |
+| `partial` | `false` | `false` | PASS |
+| device `drained` | `true` | `true` | PASS |
+| device `restored` | `true` | `true` | PASS |
+| `used_before_bytes` | `> 0` | `534773760` | PASS |
+| test file `Used` after | `0` | `0` | PASS |
+| `/dev/nvme0n1p3` `Used` | `0` | `0` | PASS |
+| cleanup | file removed, only real swap left | removed | PASS |
+
+After cleanup `/proc/swaps` listed only `/dev/nvme0n1p3` with `Used 0`.
+
+Raw artifacts: `live-run.txt` (full console transcript) and
+`live-receipt.json` (the JSON receipt above).
 
 ## Memory Writes
 
@@ -252,11 +391,17 @@ restore paths. The read-only live run proves the planner reads the real
       "target": "internal/reclaim/run.go",
       "fact_id": "fact_e95777f5",
       "note": "Guarded no-reboot swap/RAM reclaim pattern: budgeted device subset, verify-before-and-after swapoff/swapon, restore on failure, drop_caches as an explicit separate action"
+    },
+    {
+      "verb": "memo",
+      "target": "goals/no-reboot-memory-reclaim/evidence.md",
+      "fact_id": "fact_74f297f6",
+      "note": "Live drain verified with a disposable 1 GiB swap file: 510 MiB used drained to 0 with drained=true and restored=true; root via user-approved pkexec because the harness denies sudo; the real partition stayed at 0"
     }
   ],
   "facts_verify": {
     "exit_code": 0,
-    "grounding": "11/12 file-referenced facts grounded; 2 pre-existing missing files: goals/sila-cc-program/goal.md, goals/sila-cc-preflight/goal.md"
+    "grounding": "15/16 file-referenced facts grounded; 2 pre-existing missing files: goals/sila-cc-program/goal.md, goals/sila-cc-preflight/goal.md"
   },
   "handoff": {
     "id": "hoff_f541a8aff845"
