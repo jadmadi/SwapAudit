@@ -1,6 +1,6 @@
 # VPS Deployment Guide: Keeping AI CLI Tools Clean
 
-When running continuous AI coding agents (`opencode`, `commandcode` / `cmd`, `muse`, `agy`) on a Linux VPS, memory leaks occur via two primary mechanisms:
+When running continuous AI coding agents (`opencode`, `muse`, `agy`) on a Linux VPS, memory leaks occur via two primary mechanisms:
 1. **RAM-backed `/tmp` exhaustion**: Stale build caches, test workspaces, and tool outputs allocated in `tmpfs`.
 2. **Orphaned workers**: Subprocesses and background runners reparented to `PID 1` after an agent CLI or SSH session terminates.
 

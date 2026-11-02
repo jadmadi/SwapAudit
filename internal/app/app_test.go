@@ -464,7 +464,7 @@ func TestRunForcedInteractiveRequiresTTY(t *testing.T) {
 }
 
 func TestRunSkipsPickerOnNonTTY(t *testing.T) {
-	code, stdout, stderr := captureRun(t, []string{"--no-update-check", "--limit", "1", "--no-color", "--ascii"})
+	code, stdout, stderr := captureRun(t, []string{"--limit", "1", "--no-color", "--ascii"})
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
 	}
@@ -774,7 +774,7 @@ func TestRunUpgradeHelp(t *testing.T) {
 	}
 }
 
-func TestRunNoUpdateCheck(t *testing.T) {
+func TestRunWithoutUpdateCheck(t *testing.T) {
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -782,7 +782,7 @@ func TestRunNoUpdateCheck(t *testing.T) {
 	}
 	os.Stdout = w
 
-	code := Run([]string{"--no-update-check", "--dry-run", "--limit", "1", "--no-color", "--ascii"})
+	code := Run([]string{"--dry-run", "--limit", "1", "--no-color", "--ascii"})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -791,15 +791,13 @@ func TestRunNoUpdateCheck(t *testing.T) {
 	_, _ = io.Copy(&buf, r)
 
 	if code != 0 {
-		t.Errorf("Run(--no-update-check) exit code = %d, want 0", code)
+		t.Errorf("Run() exit code = %d, want 0", code)
 	}
 }
 
 func TestRunCachedUpdateNotice(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", tmpDir)
-	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
-	t.Setenv("CI", "")
 
 	statePath := filepath.Join(tmpDir, "swapaudit", "update_check.json")
 	state := &updater.State{
@@ -818,7 +816,7 @@ func TestRunCachedUpdateNotice(t *testing.T) {
 	}
 	os.Stdout = w
 
-	code := Run([]string{"--dry-run", "--limit", "1", "--no-color", "--ascii"})
+	code := Run([]string{"--check-updates", "--dry-run", "--limit", "1", "--no-color", "--ascii"})
 
 	w.Close()
 	os.Stdout = oldStdout

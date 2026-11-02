@@ -2,7 +2,7 @@
 
 ## Consent and visibility
 
-The repository is **public** as of 2026-10-19. The release goal's consent record is `goals/standalone-v0-1-0-release/consent.md`.
+The repository is **public** as of 2026-10-19. Maintainer consent is recorded in the internal release records.
 
 Public release assets, `go install`, and `swapaudit upgrade` are verified without authentication. Changing visibility or publishing under a different namespace still requires maintainer approval.
 
@@ -38,8 +38,8 @@ Do not tag if any upload name is missing or if the snapshot fails.
 ## Tag and publish
 
 ```bash
-git tag -a v0.1.0 -m "SwapAudit v0.1.0"
-git push origin v0.1.0
+git tag -a v0.2.0 -m "SwapAudit v0.2.0"
+git push origin v0.2.0
 ```
 
 The tag triggers `.github/workflows/release.yml`:
@@ -51,7 +51,7 @@ The tag triggers `.github/workflows/release.yml`:
 ## Post-release verification
 
 ```bash
-./scripts/verify-release.sh v0.1.0
+./scripts/verify-release.sh v0.2.0
 ```
 
 If `cosign` is not installed locally, the script still checks the signature assets and prints a warning; install cosign to perform full verification. The script uses the public release URLs and unauthenticated `go install`.
@@ -72,7 +72,7 @@ After publication:
 - Protect `main` with required CI checks.
 - Protect `v*` tags.
 
-Record the settings and verification output in `goals/standalone-v0-1-0-release/evidence.md`.
+Record the settings and verification output in the internal release evidence.
 
 ## Asset contract
 

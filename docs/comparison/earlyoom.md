@@ -23,7 +23,7 @@ the memory, and what is safe to reclaim?"*.
 | Privileges | Normal user | Root or `CAP_KILL`; the systemd unit uses `DynamicUser` + `CAP_KILL` |
 | Footprint | One-shot, sub-second, no idle cost | ~2 MiB RSS, `mlockall()`, adaptive polling up to 10 Hz |
 | Observability | Rich terminal report with categories and reclaim totals | Periodic log lines and one log entry per kill |
-| Configuration | CLI flags, `SWAPAUDIT_NO_UPDATE_CHECK` | CLI flags, `/etc/default/earlyoom` |
+| Configuration | CLI flags, `SWAPAUDIT_CHECK_UPDATES` | CLI flags, `/etc/default/earlyoom` |
 | Distribution | Static binary, `go install`, self-upgrade | Distro packages (Debian, Ubuntu, Fedora, Arch), systemd/init |
 | Implementation | Go standard library, zero dependencies | C, libc only, no dependencies |
 | License | WaqfDPL-1.0 or AGPL-3.0 | MIT |

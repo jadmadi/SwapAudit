@@ -242,9 +242,6 @@ func IsNewer(current, target string) bool {
 
 // GetCachedUpdate reads local cache file synchronously. Returns UpdateInfo if an update is already known and fresh.
 func GetCachedUpdate(currentVersion string) *UpdateInfo {
-	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
-		return nil
-	}
 	path := CacheFilePath()
 	state, err := LoadState(path)
 	if err == nil && state != nil && time.Since(state.LastChecked) < CheckInterval {
@@ -333,10 +330,6 @@ func CheckDailyUpdate(currentVersion string) (*UpdateInfo, error) {
 
 // CheckDailyUpdateWithContext checks for an available release update with context cancellation support.
 func CheckDailyUpdateWithContext(ctx context.Context, currentVersion string) (*UpdateInfo, error) {
-	if os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") != "" || os.Getenv("CI") != "" {
-		return nil, nil
-	}
-
 	path := CacheFilePath()
 	now := time.Now()
 

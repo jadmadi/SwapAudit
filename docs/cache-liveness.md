@@ -1,7 +1,7 @@
 # Cache liveness contract
 
 > **Implementation status (2026-11-02):** this document describes the
-> cache-liveness design certified in `goals/cache-liveness-classification`.
+> cache-liveness design certified by the internal cache-liveness review.
 > The implementation is not present at the current revision. The checks that
 > actually run are listed in [`safety.md`](safety.md#cache-deletion-recheck).
 > Treat this file as a design contract for the follow-up, not current behavior.
