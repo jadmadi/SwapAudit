@@ -1,5 +1,12 @@
 # Goal: Unified RAM & Swap Audit and Surgical Cleanup
 
+## Chain of Custody (Isnad)
+- **Registered By**: Pending Registration
+- **Spec Audited By**: Pending Spec Audit
+- **Implemented By**: Pending Implementation
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_unified-ram-swap-audit_1793607788`
+
+
 ## Context
 Standard Linux workstations experience heavy RAM and swap creep due to three key factors:
 1. Physical RAM (VmRSS) accumulated by bloated or dormant background apps.

@@ -27,11 +27,11 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 6. **Auto-Reconciliation**: Run `sila goals` to scan commits, mark 🟢 **Implemented**, and clear the claim lock.
 
 ## Summary
-- **Total Goals**: 25
+- **Total Goals**: 26
 - 🟡 **Ready to Execute (Pending)**: 1 (0 independent ⚡, 1 unblocked 🔗)
-- 🟢 **Implemented**: 24 (24 verified 📜, 0 unverified)
-- 🎯 **By Tier**: 13 immediate (Tier 1), 10 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
-- 📋 **Execution Tasks Progress**: 845/890 completed (94%)
+- 🟢 **Implemented**: 25 (25 verified 📜, 0 unverified)
+- 🎯 **By Tier**: 13 immediate (Tier 1), 11 roadmap (Tier 2), 2 nice-to-have (Tier 3), 0 wont-fix (Tier 4)
+- 📋 **Execution Tasks Progress**: 849/894 completed (94%)
 
 ---
 
@@ -61,6 +61,7 @@ This index tracks all goal packages under `goals/`, their execution mode (Indepe
 | [`makefile-install-alignment`](makefile-install-alignment/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `9e578a7` |
 | [`proc-stat-edge-case-tests`](proc-stat-edge-case-tests/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `ea9a60d` |
 | [`sila-onboarding`](sila-onboarding/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `f4f1f93` |
+| [`unified-ram-swap-audit`](unified-ram-swap-audit/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `1db2778` |
 | [`update-check-lifecycle`](update-check-lifecycle/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `602fa2f` |
 | [`updater-dev-version-compare`](updater-dev-version-compare/goal.md) | `⚡ Indep` | 🚢 SHIP | verified 📜 | Git Commit | `0167195` |
 | [`cache-liveness-classification`](cache-liveness-classification/goal.md) | `🔗 Dep` | 🚢 SHIP | verified 📜 | Evidence (evidence.md) | `evidence` |
