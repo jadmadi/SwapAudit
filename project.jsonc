@@ -1,0 +1,91 @@
+{
+  "$schema": "https://jadmadi.net/schemas/project.schema.json",
+  // Timestamp of the last metadata revision (Format: YY-MM-DD-HH-MM)
+  "lastEdit": "26-11-02-20-22",
+
+  // Unique identifier matching the project URL slug on jadmadi.net
+  "id": "swapaudit",
+
+  // Human-readable title
+  "title": "SwapAudit",
+
+  // Single-sentence punchy tagline
+  "tagline": "Per-process swap and /tmp cache attribution with guarded cleanup for Linux",
+
+  // Semantic version
+  "version": "0.2.0",
+
+  // 2-3 sentence executive summary explaining what it does and why it exists
+  "summary": "A single static Go binary that shows which processes and /tmp caches are holding swap and RAM, then reclaims them safely. It pairs a read-only audit with explicit, guarded cleanup and a no-reboot swap drain. No daemon, no telemetry, no account.",
+
+  // Extended description
+  "description": "Linux CLI for per-process VmSwap, /tmp cache age, and guarded cleanup, with a no-reboot swap drain, versioned JSON snapshots, sampling, and watch mode.",
+
+  // Status on catalog
+  "status": "active",
+
+  // Release or active year
+  "year": "2026",
+
+  // Technical stack breakdown
+  "tech_stack": {
+    "languages": ["Go"],
+    "frameworks": ["Go standard library", "Linux /proc"],
+    "architecture": "Single static binary; /proc parsers, pure planner, guarded executor; no daemon",
+    "license": "Dual: WaqfDPL-Mulzim 1.0 / AGPL-3.0",
+    "license_type": "waqf" // "permissive" | "copyleft" | "waqf" | "proprietary"
+  },
+
+  // One-line metrics/capabilities pill shown on cards and tables
+  "stats": "v0.2.0 · 4 architectures · per-process swap · guarded cleanup",
+
+  // Highlight badges displayed on project cards
+  "badges": [
+    "Go CLI",
+    "Linux",
+    "Zero Telemetry",
+    "Waqf"
+  ],
+
+  // Primary 1-line installation snippet
+  "install_command": "go install github.com/jadmadi/swapaudit/cmd/swapaudit@v0.2.0",
+
+  // Authoritative external links
+  "links": {
+    "github": "https://github.com/jadmadi/SwapAudit",
+    "website": "https://jadmadi.net/project/swapaudit",
+    "docs": "https://github.com/jadmadi/SwapAudit/blob/main/README.md",
+    "package": null
+  },
+
+  // Problem statement: What pain point does this solve?
+  "problem_statement": "Linux developer workstations accumulate swapped-out background processes and stale /tmp caches, but `free`, `top`, and `vmstat` only show aggregates.",
+
+  // Solution: How does this solve it?
+  "solution": "Reads /proc and /tmp to rank the processes and caches responsible, then drains swap or prunes caches through explicit, guarded actions with a dry-run.",
+
+  // List of major capabilities and distinct features
+  "features": [
+    "Per-process VmSwap ranking, sortable by size, swap, RAM, or age, plus /tmp cache size and age",
+    "Guarded no-reboot swap drain with per-device restore and a JSON receipt",
+    "Versioned --json snapshot for scripts, statuslines, and CI",
+    "Headless sampler and foreground watch mode with threshold notifications",
+    "Interactive four-tier action picker with typed scope confirmation"
+  ],
+
+  // Frequently Asked Questions
+  "faq": [
+    {
+      "question": "Does SwapAudit send my data anywhere?",
+      "answer": "No. The default audit makes no network requests. `--check-updates` or `SWAPAUDIT_CHECK_UPDATES=1` performs one GitHub release request. There is no telemetry and no account."
+    },
+    {
+      "question": "Which Linux architectures are supported?",
+      "answer": "amd64, arm64, armv7, and riscv64, as static binaries. `go install` works on any Linux architecture supported by Go."
+    },
+    {
+      "question": "Does it kill processes automatically?",
+      "answer": "No. Cleanup requires an explicit flag. Process termination checks the real UID, PID start ticks, and orphan evidence; `--dry-run` previews every action."
+    }
+  ]
+}
