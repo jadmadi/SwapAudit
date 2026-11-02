@@ -220,16 +220,16 @@ func ReadSystemSwap() model.SystemSwap {
 	return s
 }
 
-// ProcMemory captures swap, resident physical memory, and parent PID from /proc/[pid]/status.
-type ProcMemory struct {
+// Memory captures swap, resident physical memory, and parent PID from /proc/[pid]/status.
+type Memory struct {
 	SwapBytes int64
 	RSSBytes  int64
 	PPid      int
 }
 
 // ParseProcMemory extracts VmSwap, VmRSS (in bytes), and PPid from a /proc/[pid]/status reader.
-func ParseProcMemory(r io.Reader) ProcMemory {
-	var m ProcMemory
+func ParseProcMemory(r io.Reader) Memory {
+	var m Memory
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -268,10 +268,10 @@ func ParseVmSwap(r io.Reader) int64 {
 }
 
 // ReadProcMemory reads VmSwap, VmRSS, and PPid for a given PID.
-func ReadProcMemory(pid int) ProcMemory {
+func ReadProcMemory(pid int) Memory {
 	f, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
 	if err != nil {
-		return ProcMemory{}
+		return Memory{}
 	}
 	defer f.Close()
 	return ParseProcMemory(f)
