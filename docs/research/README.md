@@ -69,5 +69,5 @@ These are proposed decision criteria, not measured market data.
 ## Related
 
 - Feature freeze: [`GOVERNANCE.md`](../../GOVERNANCE.md).
-- Goal: [`goals/public-install-demand-validation/goal.md`](../../goals/public-install-demand-validation/goal.md).
+- Roadmap: [`ROADMAP.md`](../../ROADMAP.md).
 - Business review: archived locally; not published (internal commercial analysis).
