@@ -5,7 +5,22 @@
 [![License: WaqfDPL](https://img.shields.io/badge/License-WaqfDPL--Mulzim--1.0-emerald.svg)](WaqfDPL-1.0.md)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE-AGPL.txt)
 
-Auditor and surgical cleanup tool for swap memory, RAM, and in-memory caches on Linux.
+swapaudit answers the question `free` cannot: which processes and `/tmp`
+caches are holding swap and RAM, and what is safe to reclaim right now.
+
+It is a single static Linux binary for developer workstations. The default
+audit is read-only. Every cleanup is explicit, previewable with `--dry-run`,
+and guarded by UID, path, symlink, and PID start-tick checks.
+
+What it does:
+
+1. It attributes memory. Per-process `VmSwap`, `/tmp` cache size and idle time,
+   and separate categories for dormant agents, orphaned agents, untouched
+   caches, and abandoned runs.
+2. It reclaims safely. No implicit destructive action. Each cleanup group has
+   its own flag, and the tool re-reads process and path evidence before it acts.
+3. It stays out of the way. Zero runtime dependencies, one static binary, no
+   daemon, no account, and no telemetry.
 
 ```
 +--------------------------------------------------------------------------------------------------+
@@ -27,6 +42,24 @@ Auditor and surgical cleanup tool for swap memory, RAM, and in-memory caches on 
   ... and 652 smaller candidates (1.9 GB). Run with --all to inspect full list.
 ```
 
+## Start here
+
+Install the latest static binary:
+
+```bash
+curl -sSL https://github.com/jadmadi/swapaudit/releases/latest/download/swapaudit-linux-amd64 \
+  -o ~/.local/bin/swapaudit && chmod +x ~/.local/bin/swapaudit
+```
+
+Run the audit, then preview every cleanup:
+
+```bash
+swapaudit
+swapaudit --clean-all --dry-run
+```
+
+Full install options: [Installation methods](#installation-methods).
+
 ## Why swapaudit exists
 
 Modern developer workstations run dozens of language server isolates, container runtimes,
@@ -37,16 +70,15 @@ Meanwhile, temporary build directories and test suites allocate gigabytes of vol
 `/tmp`, which mounts as a tmpfs RAM-backed filesystem. When RAM pressure rises, tmpfs pages compete
 directly with process memory for physical space and swap blocks.
 
-Standard tools like free, top, and vmstat report aggregate swap usage or resident set size.
-They cannot answer three critical triage questions:
+`free`, `top`, and `vmstat` report aggregate swap usage or resident set size.
+They cannot answer three triage questions:
 
 - Which dormant processes pushed hundreds of megabytes into swap hours or days ago?
 - Which abandoned test workspaces in `/tmp` are inflating the kernel tmpfs backing store?
 - What can be safely cleaned right now without disrupting running applications?
 
-swapaudit solves this with zero dependencies, sub-second execution, and verified safety guards.
-For comparisons with earlyoom, systemd-oomd, zram, smem, and vmstat, see
-[docs/comparison/](docs/comparison/).
+The audit answers all three in one pass. For comparisons with earlyoom,
+systemd-oomd, zram, smem, and vmstat, see [docs/comparison/](docs/comparison/).
 
 ## Architecture and triage pipeline
 
@@ -103,23 +135,48 @@ flowchart TD
     S --> T["Surgical Cleanup: SIGTERM / os.RemoveAll"]
 ```
 
-## Key capabilities and safety rails
+## Capabilities and safety rails
 
-- Pure Go and zero dependencies: written entirely with standard library and Linux syscalls.
-- Sub-second audit: inspects kernel structures directly without background daemons or agents.
-- Precise process classification: detects dormant AI coding agents, browser MCP servers, and orphans.
-- Shell flood protection: aggregates dozens of idle subshells into single compact rows.
-- Kernel start-ticks verification: validates process start ticks immediately before sending SIGTERM
-  to guarantee immunity against PID reuse kills.
+Attribution:
+
+- Per-process and per-cache ranking: `VmSwap` from `/proc`, `/tmp` cache size,
+  and newest mtime, sorted by size, swap, RAM, or age.
+- Precise process classification: dormant AI coding agents, browser MCP
+  servers, and orphaned sessions.
+- Shell flood protection: aggregates dozens of idle subshells into one row.
+
+Safe cleanup:
+
+- Read-only default: the audit changes nothing until a cleanup flag is passed.
+- Kernel start-tick verification: re-reads start ticks before `SIGTERM` to avoid
+  PID-reuse kills.
 - Real-UID ownership: never signals a process owned by another user.
-- Fail-closed orphan evidence: systemd services and processes without a controlling
-  terminal are never treated as orphans.
-- Guarded swap drain: `swapoff`/`swapon` per device with feasibility math, a RAM
+- Fail-closed orphan evidence: systemd services and processes without a
+  controlling terminal are not treated as orphans.
+- Strict path confinement: prunes only under `/tmp` or `/var/tmp`, owned by the
+  active UID, and rejects symlinks at every walk boundary.
+- Guarded swap drain: per-device `swapoff`/`swapon` with feasibility math, a RAM
   reserve, and mandatory re-enable before the next device.
-- Strict path confinement: only prunes files inside `/tmp` or `/var/tmp` owned by your active user UID.
-- Symlink rejection: skips symlinks at top-level and nested walk boundaries to protect real files.
-- Stream size limits: self-updater bounds downloads to 50MB and checksum files to 1MB.
-- Dynamic terminal formatting: adapts to terminal width, supports NO_COLOR, and includes ASCII fallback.
+- Bounded downloads: the self-updater caps binaries at 50 MB and checksum files
+  at 1 MB.
+
+Low overhead:
+
+- Pure Go, standard library only, no runtime dependencies.
+- Sub-second audit with no daemon or background worker.
+- Terminal-aware formatting with `NO_COLOR` and an ASCII fallback.
+
+## Limits
+
+- Linux only; uses `/proc` and Linux cgroups.
+- Scans `/tmp`, not `/var/tmp`. Cleanup is confined to both.
+- Cache cleanup does not yet inspect open file descriptors, process working
+  directories, or file-backed mappings. Do not prune a cache while a build or
+  test is using it. The design contract is in `docs/cache-liveness.md`; the
+  checks that actually run are in `docs/safety.md`.
+- Agent detection covers a fixed runtime list plus MCP heuristics, not every
+  agent.
+- RAM used relies on `MemAvailable` (Linux 3.14+).
 
 ## Installation methods
 
@@ -491,6 +548,9 @@ Running tests and linters:
 ```
 
 For contribution instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Before proposing a new feature, read the [demand-validation research and feature
+freeze](docs/research/README.md); feature work is frozen until that research
+reaches a written decision.
 For project governance and security policies, see [GOVERNANCE.md](GOVERNANCE.md)
 and [SECURITY.md](SECURITY.md).
 For agent-specific operating guidance, see [AGENTS.md](AGENTS.md).
