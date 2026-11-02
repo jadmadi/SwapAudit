@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "action": "drain-swap",
+  "dry_run": false,
+  "root": true,
+  "feasible": true,
+  "partial": false,
+  "reserve_bytes": 3354918502,
+  "headroom_bytes": 14812201370,
+  "all_headroom_bytes": 14812201370,
+  "skipped_for_headroom_bytes": 0,
+  "before": {
+    "swap_used_bytes": 534773760,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18701893632,
+    "mem_free_bytes": 9084682240,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "after": {
+    "swap_used_bytes": 0,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18172604416,
+    "mem_free_bytes": 8555393024,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "devices": [
+    {
+      "filename": "/var/tmp/swapaudit-live.swap",
+      "type": "file",
+      "priority": 100,
+      "used_before_bytes": 534773760,
+      "drained": true,
+      "restored": true
+    }
+  ],
+  "result": "clean",
+  "errors": []
+}

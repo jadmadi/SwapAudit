@@ -1,0 +1,120 @@
+=== environment ===
+2026-11-02T17:36:32+03:00
+uid=0(root) gid=0(root) groups=0(root)
+6.12.113+deb13-amd64
+swapaudit v0.1.0-73-g31f9c52 (commit: 31f9c52, built: 2026-11-02T14:35:22Z)
+
+=== /proc/swaps before ===
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+
+=== free -m before ===
+               total        used        free      shared  buff/cache   available
+Mem:           31994       13675       10185        2535       11133       18319
+Swap:          17472           0       17472
+
+=== create and enable /var/tmp/swapaudit-live.swap (1 GiB, priority 100) ===
+Setting up swapspace version 1, size = 1024 MiB (1073737728 bytes)
+no label, UUID=78258f7e-913c-48ec-8f40-fd86f416e67c
+/var/tmp/swapaudit-live.swap            file		1048572		0		100
+
+=== force anonymous pages into the test swap ===
+MADV_PAGEOUT ok on 128/128 chunks
+test_swap_used_kib=522240
+
+=== /proc/swaps after forcing pages ===
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+/var/tmp/swapaudit-live.swap            file		1048572		522240		100
+
+               total        used        free      shared  buff/cache   available
+Mem:           31994       14147        8675        2540       12190       17847
+Swap:          18496         510       17986
+
+=== dry run ===
+SYSTEM RECLAIM
+------------------------------------------------------------------
+  Swap         510.0 MB used / 18.1 GB total across 2 device(s)
+  Device       /dev/nvme0n1p3         partition 0 B used / 17.1 GB  already empty
+  Device       /var/tmp/swapaudit-... file      510.0 MB used / 1024.0 MB
+  RAM          17.4 GB available / 31.2 GB total
+  Reserve      3.1 GB (10% of RAM, floor 512.0 MB)
+  Headroom     13.8 GB after drain
+  Pressure     some 0.00 / full 0.00 (avg10)
+  Page cache   9.4 GB reclaimable with --drop-caches (root)
+  Plan         drain 1 device(s), 510.0 MB -> RAM, feasible
+  Command      swapoff /var/tmp/swapaudit-live.swap && swapon -p 100 /var/tmp/swapaudit-live.swap
+
+  Dry run     would drain 1 device(s); no commands executed
+dry_run_exit=0
+
+=== drain ===
+drain_exit=0
+{
+  "schema_version": 1,
+  "action": "drain-swap",
+  "dry_run": false,
+  "root": true,
+  "feasible": true,
+  "partial": false,
+  "reserve_bytes": 3354918502,
+  "headroom_bytes": 14812201370,
+  "all_headroom_bytes": 14812201370,
+  "skipped_for_headroom_bytes": 0,
+  "before": {
+    "swap_used_bytes": 534773760,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18701893632,
+    "mem_free_bytes": 9084682240,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "after": {
+    "swap_used_bytes": 0,
+    "swap_total_bytes": 19395489792,
+    "mem_available_bytes": 18172604416,
+    "mem_free_bytes": 8555393024,
+    "page_cache_bytes": 10118189056,
+    "pressure_some_avg10": 0,
+    "pressure_full_avg10": 0
+  },
+  "devices": [
+    {
+      "filename": "/var/tmp/swapaudit-live.swap",
+      "type": "file",
+      "priority": 100,
+      "used_before_bytes": 534773760,
+      "drained": true,
+      "restored": true
+    }
+  ],
+  "result": "clean",
+  "errors": []
+}
+
+=== stderr ===
+
+=== /proc/swaps after drain ===
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+/var/tmp/swapaudit-live.swap            file		1048572		0		100
+
+               total        used        free      shared  buff/cache   available
+Mem:           31994       14658        8164        2540       12190       17336
+Swap:          18496           0       18496
+
+result=clean partial=false blocked=none dry_run=false
+device=/var/tmp/swapaudit-live.swap type=file priority=100 used_before_bytes=534773760 drained=true restored=true error=none
+receipt_check_exit=0 (0 means pass)
+test_swap_used_after_kib=0
+real_partition_used_kib=0
+verdict=PASS
+
+=== cleanup ===
+test swap file removed: yes
+
+=== /proc/swaps final ===
+Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	0		-2
+
