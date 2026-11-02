@@ -1,6 +1,11 @@
 # X / Twitter launch drafts — SwapAudit v0.1.0
 
 > **Drafts only. Nothing here has been posted.** Review before publishing. Do not add metrics that were not measured.
+>
+> Hold these until `public-install-demand-validation` reaches a written decision
+> and the feature freeze is resolved. Verify every claim against the binary you
+> actually publish; `main` and `v0.1.0` differ on the update-check flag (see
+> Review notes).
 
 Links:
 
@@ -129,7 +134,9 @@ https://github.com/jadmadi/SwapAudit/releases/tag/v0.1.0
 ### 7/7
 
 ```text
-Limits: Linux-only, /tmp only, four agent runtimes, no JSON or package-manager package yet.
+Limits: Linux-only. Scans /tmp, not /var/tmp. Agent detection covers a fixed runtime list plus MCP heuristics, not every agent.
+
+No package-manager package yet. JSON snapshots and a foreground watch mode are included.
 
 It's free software (WaqfDPL/AGPL). Feedback and bug reports:
 https://github.com/jadmadi/SwapAudit
@@ -158,3 +165,11 @@ https://github.com/jadmadi/SwapAudit
 - Avoid absolute safety claims or "zero risk." The correct description is "guarded cleanup with a dry-run."
 - X counts every URL as 23 characters; the raw text above is kept short so it fits under 280 either way.
 - Post one launch tweet, then the thread as a reply. Do not post the same text to multiple communities on the same day.
+- The privacy drafts are true for the published `v0.1.0` binary, which has
+  `--check-updates` (opt-in). Current `main` regressed to a default background
+  check with `--no-update-check`; `README.md` and `--help` on `main` describe
+  that older policy while `docs/decisions/0001-update-check-policy.md` still
+  records opt-in. Before publishing any privacy claim, rebuild from the tag you
+  ship and verify `--help` shows `--check-updates`.
+- `main` includes JSON output and watch mode; the earlier "no JSON" line was
+  stale and is removed. Check the release's own `--help` before posting.

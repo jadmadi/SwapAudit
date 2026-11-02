@@ -23,6 +23,7 @@ import (
 	"github.com/jadmadi/swapaudit/internal/notify"
 	"github.com/jadmadi/swapaudit/internal/picker"
 	"github.com/jadmadi/swapaudit/internal/proc"
+	"github.com/jadmadi/swapaudit/internal/reclaim"
 	"github.com/jadmadi/swapaudit/internal/snapshot"
 	"github.com/jadmadi/swapaudit/internal/term"
 	"github.com/jadmadi/swapaudit/internal/triage"
@@ -41,6 +42,30 @@ func (s *stringSliceFlag) String() string {
 func (s *stringSliceFlag) Set(val string) error {
 	*s = append(*s, val)
 	return nil
+}
+
+// cleanupSelection is the expanded set of cleanup groups. `--clean-all` never
+// enables orphaned kills: orphan cleanup stays explicit because its evidence is
+// heuristic.
+type cleanupSelection struct {
+	untouched bool
+	abandoned bool
+	dormant   bool
+	orphaned  bool
+}
+
+func selectCleanup(cleanAll, cleanTmp, untouched, abandoned, dormant, orphaned bool) cleanupSelection {
+	s := cleanupSelection{untouched: untouched, abandoned: abandoned, dormant: dormant, orphaned: orphaned}
+	if cleanTmp {
+		s.untouched = true
+		s.abandoned = true
+	}
+	if cleanAll {
+		s.untouched = true
+		s.abandoned = true
+		s.dormant = true
+	}
+	return s
 }
 
 // CollectSwapItems aggregates stale /tmp caches and processes with VmSwap > 0.
@@ -65,10 +90,11 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 			continue
 		}
 
-		swapBytes, ppid := proc.ReadProcStatus(pid)
-		if swapBytes <= 0 {
-			continue
-		}
+		procMem := proc.ReadProcMemory(pid)
+
+		swapBytes := procMem.SwapBytes
+		rssBytes := procMem.RSSBytes
+		ppid := procMem.PPid
 
 		comm := proc.ReadComm(pid)
 		argv := proc.ReadCmdlineArgs(pid)
@@ -77,9 +103,13 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 		age := proc.CalcProcessAge(startTicks, bootTime)
 		lastActive := proc.ReadProcessLastActive(pid, uptimeMs)
 		lastActiveAt := now.Add(-lastActive)
-		isOrphaned := proc.IsProcessOrphaned(ppid)
+		_, isOrphaned := proc.ClassifyOrphan(pid, ppid)
 
 		cat, cleanable := triage.CategorizeProcess(comm, argv, pid, ppid, isOrphaned, lastActive, idleThreshold)
+
+		if swapBytes <= 0 && rssBytes < 10*1024*1024 && !cleanable {
+			continue
+		}
 
 		dispName := comm
 		hasConv := false
@@ -110,6 +140,7 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 			Command:      cmd,
 			Category:     cat,
 			SwapBytes:    swapBytes,
+			RSSBytes:     rssBytes,
 			Age:          age,
 			LastActive:   lastActive,
 			LastActiveAt: lastActiveAt,
@@ -556,6 +587,125 @@ func printWatchUsage(w io.Writer) {
 	fmt.Fprintln(w, "  swapaudit watch --json --duration=30s")
 }
 
+// parseByteSize parses a size such as 512MiB, 2GiB, 1.5GB, or 1048576.
+func parseByteSize(raw string) (int64, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, errors.New("empty size")
+	}
+	upper := strings.ToUpper(s)
+	units := []struct {
+		suffix string
+		mult   int64
+	}{
+		{"GIB", 1 << 30}, {"GB", 1_000_000_000},
+		{"MIB", 1 << 20}, {"MB", 1_000_000},
+		{"KIB", 1 << 10}, {"KB", 1_000},
+		{"B", 1},
+	}
+	mult := int64(1)
+	for _, u := range units {
+		if strings.HasSuffix(upper, u.suffix) {
+			mult = u.mult
+			upper = strings.TrimSpace(strings.TrimSuffix(upper, u.suffix))
+			break
+		}
+	}
+	v, err := strconv.ParseFloat(upper, 64)
+	if err != nil || v < 0 {
+		return 0, fmt.Errorf("invalid size %q", raw)
+	}
+	return int64(v * float64(mult)), nil
+}
+
+func runReclaim(args []string) int {
+	fs := flag.NewFlagSet("swapaudit reclaim", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	var (
+		drainSwap   = fs.Bool("drain-swap", false, "Drain active swap devices into RAM (default action)")
+		dropCaches  = fs.Bool("drop-caches", false, "Sync and drop clean page cache and dentries")
+		dryRun      = fs.Bool("dry-run", false, "Print the plan and feasibility without executing")
+		yes         = fs.Bool("yes", false, "Skip the interactive confirmation")
+		jsonOut     = fs.Bool("json", false, "Emit a machine-readable receipt")
+		includeZram = fs.Bool("include-zram", false, "Allow draining zram (decompresses into RAM)")
+		reserveRaw  = fs.String("reserve", "", "RAM to keep available after the drain (default: 10% of RAM, floor 512MiB)")
+		timeout     = fs.Duration("timeout", 5*time.Minute, "Per-command timeout for swapoff/swapon")
+		_           = fs.Bool("no-color", false, "Accepted for consistency; reclaim output is uncolored")
+		_           = fs.Bool("ascii", false, "Accepted for consistency; reclaim output is ASCII")
+	)
+	fs.BoolVar(yes, "y", false, "Alias for --yes")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printReclaimUsage(os.Stdout)
+			return 0
+		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		return 2
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintf(os.Stderr, "error: unexpected argument %q\n", fs.Arg(0))
+		return 2
+	}
+	if *timeout < 10*time.Second || *timeout > 30*time.Minute {
+		fmt.Fprintln(os.Stderr, "error: --timeout must be between 10s and 30m")
+		return 2
+	}
+
+	reserve := int64(0)
+	reserveSet := false
+	if *reserveRaw != "" {
+		v, err := parseByteSize(*reserveRaw)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: --reserve: %v\n", err)
+			return 2
+		}
+		reserve, reserveSet = v, true
+	}
+
+	cfg := reclaim.Config{
+		Out:         os.Stdout,
+		Err:         os.Stderr,
+		In:          bufio.NewReader(os.Stdin),
+		System:      reclaim.NewRealSystem(),
+		IsRoot:      os.Geteuid() == 0,
+		StdinIsTTY:  stdinIsTerminal(),
+		DryRun:      *dryRun,
+		Yes:         *yes,
+		JSON:        *jsonOut,
+		DrainSwap:   *drainSwap,
+		DropCaches:  *dropCaches,
+		IncludeZram: *includeZram,
+		Reserve:     reserve,
+		ReserveSet:  reserveSet,
+		Timeout:     *timeout,
+	}
+	return reclaim.Run(cfg)
+}
+
+func printReclaimUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: swapaudit reclaim [FLAGS]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Clean swap and page cache without rebooting.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "  --drain-swap           Drain active swap devices back into RAM (default)")
+	fmt.Fprintln(w, "  --drop-caches          Sync and drop clean page cache and dentries")
+	fmt.Fprintln(w, "  --dry-run              Print the plan and feasibility; execute nothing")
+	fmt.Fprintln(w, "  -y, --yes              Skip the interactive confirmation")
+	fmt.Fprintln(w, "  --json                 Emit a machine-readable receipt")
+	fmt.Fprintln(w, "  --include-zram         Allow draining zram (usually increases RAM use)")
+	fmt.Fprintln(w, "  --reserve <size>       RAM to keep available (default: 10% of RAM, floor 512MiB)")
+	fmt.Fprintln(w, "  --timeout <duration>   Per-command timeout (default 5m, range 10s..30m)")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Draining runs swapoff <device> then swapon [-p priority] <device> and")
+	fmt.Fprintln(w, "re-enables every device before touching the next one. Root is required.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "EXAMPLES:")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --dry-run")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --drain-swap --yes")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --drop-caches --yes")
+	fmt.Fprintln(w, "  sudo swapaudit reclaim --dry-run --json | jq .")
+}
+
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	if err != nil || fi.Mode()&os.ModeCharDevice == 0 {
@@ -626,6 +776,8 @@ func Run(args []string) int {
 			return runSample(args[1:])
 		case "watch":
 			return runWatch(args[1:])
+		case "reclaim":
+			return runReclaim(args[1:])
 		}
 	}
 
@@ -633,13 +785,13 @@ func Run(args []string) int {
 	fs.SetOutput(io.Discard)
 
 	var (
-		sortBy         = fs.String("sort", "size", "Sort column: 'size' or 'age'")
+		sortBy         = fs.String("sort", "size", "Sort column: 'size', 'swap', 'ram', or 'age'")
 		cleanUntouched = fs.Bool("clean-untouched", false, "Clean untouched /tmp build and compile caches")
 		cleanAbandoned = fs.Bool("clean-abandoned", false, "Clean abandoned /tmp test and review runs")
 		cleanDormant   = fs.Bool("clean-dormant", false, "Stop dormant agent sessions")
 		cleanOrphaned  = fs.Bool("clean-orphaned", false, "End orphaned agent sessions (parent shell deceased)")
 		cleanTmp       = fs.Bool("clean-tmp", false, "Clean all stale /tmp caches (untouched + abandoned)")
-		cleanAll       = fs.Bool("clean-all", false, "Clean all safe cleanable groups")
+		cleanAll       = fs.Bool("clean-all", false, "Clean safe groups (untouched + abandoned + dormant)")
 		dryRun         = fs.Bool("dry-run", false, "Simulate cleanup actions without deleting or stopping")
 		yes            = fs.Bool("yes", false, "Automatically answer yes to confirmation prompts")
 		maxAge         = fs.Duration("max-age", 12*time.Hour, "Cutoff age for stale /tmp folders")
@@ -691,6 +843,10 @@ func Run(args []string) int {
 		fmt.Fprintln(os.Stderr, "error: --interactive requires a terminal on stdin and stdout")
 		return 2
 	}
+	if cleanupRequested && !*dryRun && !*yes && !stdinIsTerminal() {
+		fmt.Fprintln(os.Stderr, "error: cleanup requires --dry-run or --yes when stdin is not a terminal")
+		return 2
+	}
 
 	if *jsonOutput {
 		return runJSON(*noCommand, *maxAge, *idleThreshold, customTmpPatterns)
@@ -725,8 +881,8 @@ func Run(args []string) int {
 
 	term.InitTerminal(*noColor, *ascii)
 
-	if *sortBy != "size" && *sortBy != "age" {
-		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size' or 'age')\n", *sortBy)
+	if *sortBy != "size" && *sortBy != "swap" && *sortBy != "ram" && *sortBy != "age" {
+		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size', 'swap', 'ram', or 'age')\n", *sortBy)
 		if updateCancel != nil {
 			updateCancel()
 			<-updateDone
@@ -737,29 +893,24 @@ func Run(args []string) int {
 	now := time.Now()
 	uptimeSec := proc.ReadUptime()
 	sysSwap := proc.ReadSystemSwap()
+	swapDevices, _ := proc.ReadSwapDevices()
+	pressure := proc.ReadMemoryPressure()
+	reclaimPlan := reclaim.BuildPlan(sysSwap, swapDevices, reclaim.DefaultReserve(sysSwap.MemTotal), false)
 
 	tmpPatterns := append(append([]string{}, cache.DefaultTmpPatterns...), customTmpPatterns...)
 	items := CollectSwapItems(now, uptimeSec, *maxAge, *idleThreshold, tmpPatterns)
 
 	PrintHeader(sysSwap)
+	PrintReclaimReadiness(reclaimPlan, pressure)
 	PrintActionableSection(items, *showAll)
 	PrintMainTable(items, *sortBy, *limit, *showAll)
 	PrintCategorySummary(items)
 
-	// Consolidate cleanup actions
-	if *cleanAll {
-		*cleanUntouched = true
-		*cleanAbandoned = true
-		*cleanDormant = true
-		*cleanOrphaned = true
-	}
-	if *cleanTmp {
-		*cleanUntouched = true
-		*cleanAbandoned = true
-	}
+	// Consolidate cleanup actions. Orphaned cleanup stays opt-in.
+	selection := selectCleanup(*cleanAll, *cleanTmp, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned)
 
 	if cleanupRequested {
-		executeCleanup(items, *cleanUntouched, *cleanAbandoned, *cleanDormant, *cleanOrphaned, *dryRun, *yes)
+		executeCleanup(items, selection.untouched, selection.abandoned, selection.dormant, selection.orphaned, *dryRun, *yes)
 	} else {
 		if pickerEligible(*interactive, *noInteractive) {
 			runPicker(items, *dryRun, *maxAge, *idleThreshold, tmpPatterns)

@@ -23,6 +23,7 @@ type SwapItem struct {
 	Command      string
 	Category     Category
 	SwapBytes    int64
+	RSSBytes     int64
 	SizeBytes    int64
 	Age          time.Duration
 	LastActive   time.Duration
@@ -34,14 +35,32 @@ type SwapItem struct {
 
 // SystemSwap represents overall system memory and swap status.
 type SystemSwap struct {
-	SwapTotal int64
-	SwapUsed  int64
-	SwapFree  int64
-	MemTotal  int64
-	MemUsed   int64
-	MemAvail  int64
-	TmpfsUsed int64
-	TmpfsSize int64
+	SwapTotal    int64
+	SwapUsed     int64
+	SwapFree     int64
+	MemTotal     int64
+	MemUsed      int64
+	MemAvail     int64
+	MemFree      int64
+	Buffers      int64
+	Cached       int64
+	SReclaimable int64
+	Shmem        int64
+	Dirty        int64
+	Writeback    int64
+	TmpfsUsed    int64
+	TmpfsSize    int64
+}
+
+// PageCacheBytes returns the page cache and reclaimable slab that
+// /proc/sys/vm/drop_caches can release. Shmem is excluded because it is tmpfs
+// content and is only freed by deleting files or by swapping.
+func (s SystemSwap) PageCacheBytes() int64 {
+	v := s.Buffers + s.Cached + s.SReclaimable - s.Shmem
+	if v < 0 {
+		return 0
+	}
+	return v
 }
 
 // Col defines a column in renderTable.
@@ -56,5 +75,11 @@ func ItemSize(it SwapItem) int64 {
 	if it.SizeBytes > 0 {
 		return it.SizeBytes
 	}
-	return it.SwapBytes
+	if it.SwapBytes > 0 && it.RSSBytes > 0 {
+		return it.SwapBytes + it.RSSBytes
+	}
+	if it.SwapBytes > 0 {
+		return it.SwapBytes
+	}
+	return it.RSSBytes
 }

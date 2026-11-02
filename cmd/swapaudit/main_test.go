@@ -4,6 +4,7 @@ package main_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -70,6 +71,41 @@ func TestE2E_Help(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "USAGE:") || !strings.Contains(stdout, "swapaudit") {
 		t.Errorf("expected help output to contain USAGE and swapaudit, got: %q", stdout)
+	}
+	if !strings.Contains(stdout, "reclaim") {
+		t.Errorf("expected help output to contain the reclaim command, got: %q", stdout)
+	}
+}
+
+func TestE2E_ReclaimDryRunJSON(t *testing.T) {
+	stdout, stderr, code := runCLI(t, "reclaim", "--dry-run", "--json")
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d (stderr: %s)", code, stderr)
+	}
+	if stderr != "" {
+		t.Errorf("expected empty stderr, got: %q", stderr)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatalf("stdout is not one JSON document: %v\n%s", err, stdout)
+	}
+	if doc["schema_version"].(float64) != 1 {
+		t.Errorf("schema_version = %v, want 1", doc["schema_version"])
+	}
+	if doc["result"] != "dry-run" {
+		t.Errorf("result = %v, want dry-run", doc["result"])
+	}
+}
+
+func TestE2E_ReclaimUsage(t *testing.T) {
+	stdout, _, code := runCLI(t, "reclaim", "--help")
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d", code)
+	}
+	for _, want := range []string{"--drain-swap", "--drop-caches", "--reserve", "--dry-run"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("reclaim help missing %q:\n%s", want, stdout)
+		}
 	}
 }
 

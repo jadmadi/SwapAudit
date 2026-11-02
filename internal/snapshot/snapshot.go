@@ -55,6 +55,14 @@ type System struct {
 	MemTotalBytes     int64 `json:"mem_total_bytes"`
 	MemUsedBytes      int64 `json:"mem_used_bytes"`
 	MemAvailableBytes int64 `json:"mem_available_bytes"`
+	MemFreeBytes      int64 `json:"mem_free_bytes,omitempty"`
+	BuffersBytes      int64 `json:"buffers_bytes,omitempty"`
+	CachedBytes       int64 `json:"cached_bytes,omitempty"`
+	SReclaimableBytes int64 `json:"sreclaimable_bytes,omitempty"`
+	ShmemBytes        int64 `json:"shmem_bytes,omitempty"`
+	DirtyBytes        int64 `json:"dirty_bytes,omitempty"`
+	WritebackBytes    int64 `json:"writeback_bytes,omitempty"`
+	PageCacheBytes    int64 `json:"page_cache_bytes,omitempty"`
 	TmpfsTotalBytes   int64 `json:"tmpfs_total_bytes"`
 	TmpfsUsedBytes    int64 `json:"tmpfs_used_bytes"`
 }
@@ -89,6 +97,7 @@ type Item struct {
 	Command            string  `json:"command"`
 	Category           string  `json:"category"`
 	SwapBytes          int64   `json:"swap_bytes"`
+	RSSBytes           int64   `json:"rss_bytes"`
 	SizeBytes          int64   `json:"size_bytes"`
 	EffectiveSizeBytes int64   `json:"effective_size_bytes"`
 	AgeSeconds         *int64  `json:"age_seconds"`
@@ -201,6 +210,7 @@ func toItem(it model.SwapItem, noCommand bool) Item {
 		Command:            it.Command,
 		Category:           string(it.Category),
 		SwapBytes:          it.SwapBytes,
+		RSSBytes:           it.RSSBytes,
 		SizeBytes:          it.SizeBytes,
 		EffectiveSizeBytes: model.ItemSize(it),
 		Cleanable:          it.Cleanable,
@@ -239,14 +249,13 @@ func toItem(it model.SwapItem, noCommand bool) Item {
 
 func system(sys model.SystemSwap) System {
 	return System{
-		SwapTotalBytes:    nonNegative(sys.SwapTotal),
-		SwapUsedBytes:     nonNegative(sys.SwapUsed),
-		SwapFreeBytes:     nonNegative(sys.SwapFree),
-		MemTotalBytes:     nonNegative(sys.MemTotal),
-		MemUsedBytes:      nonNegative(sys.MemUsed),
-		MemAvailableBytes: nonNegative(sys.MemAvail),
-		TmpfsTotalBytes:   nonNegative(sys.TmpfsSize),
-		TmpfsUsedBytes:    nonNegative(sys.TmpfsUsed),
+		SwapTotalBytes: nonNegative(sys.SwapTotal), SwapUsedBytes: nonNegative(sys.SwapUsed), SwapFreeBytes: nonNegative(sys.SwapFree),
+		MemTotalBytes: nonNegative(sys.MemTotal), MemUsedBytes: nonNegative(sys.MemUsed), MemAvailableBytes: nonNegative(sys.MemAvail),
+		MemFreeBytes: nonNegative(sys.MemFree), BuffersBytes: nonNegative(sys.Buffers), CachedBytes: nonNegative(sys.Cached),
+		SReclaimableBytes: nonNegative(sys.SReclaimable), ShmemBytes: nonNegative(sys.Shmem),
+		DirtyBytes: nonNegative(sys.Dirty), WritebackBytes: nonNegative(sys.Writeback),
+		PageCacheBytes:  nonNegative(sys.PageCacheBytes()),
+		TmpfsTotalBytes: nonNegative(sys.TmpfsSize), TmpfsUsedBytes: nonNegative(sys.TmpfsUsed),
 	}
 }
 

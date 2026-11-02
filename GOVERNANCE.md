@@ -56,3 +56,34 @@ To prevent unbounded stalls or silent abandonment, every decision class operates
 ## 4. Conflict Resolution & Justified Veto
 
 Disagreements are resolved through technical discussion against the in-scope criteria. If consensus cannot be reached, the Project Lead provides a written justification detailing the rationale, constraints, or security considerations for the final decision.
+
+## 5. Feature Freeze Until Demand Validation
+
+The project is under a feature freeze until `public-install-demand-validation`
+produces a dated decision at `docs/research/decision.md`. The freeze started
+with the public `v0.1.0` release on 2026-10-19.
+
+Allowed during the freeze:
+
+- Bug fixes, safety fixes, and regression tests.
+- Documentation, distribution fixes, install verification, and release
+  verification.
+- Work required by the prerequisite goals of the validation goal.
+- Research artifacts under `docs/research/`.
+
+Not allowed during the freeze:
+
+- New scanners, agent runtimes, or cleanup categories.
+- New output formats, GUI, daemon or background polling, telemetry, pricing,
+  or paywall work.
+- Any feature that expands scope beyond the released v0.1.0 surface.
+
+Feature requests are recorded in `docs/research/feature-backlog.md` with the
+status `deferred until validation`. They do not become goals until the
+decision record allows them.
+
+Current state (2026-11-02): no target-user interviews have been completed and
+no public announcement has been posted. The freeze remains in effect and the
+validation time-box is extended once. The decision record will state Proceed,
+Narrow, Stop, or Inconclusive, name the next allowed goals, and be the only
+mechanism that lifts this freeze.

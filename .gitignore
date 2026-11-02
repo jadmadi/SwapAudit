@@ -20,5 +20,14 @@ scratch/
 dist/
 build/
 
+# Unrelated local tool state (for example a SQLite cache created by a tool
+# that resolved the wrong workspace). Never part of swapaudit.
+data/
+
 # Ephemeral goal claim locks (managed by sila)
 goals/*/claim.json
+
+# Sila runtime state (managed by sila)
+.sila/state/
+.sila/charters/
+.sila/locks/

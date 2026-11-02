@@ -5,13 +5,17 @@ package cleaner
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/jadmadi/swapaudit/internal/model"
+	"github.com/jadmadi/swapaudit/internal/proc"
 )
 
 func TestPruneTmpTargetsDryRun(t *testing.T) {
@@ -104,6 +108,47 @@ func TestKillProcessTargetsUnsafeGuards(t *testing.T) {
 	reclaimed := KillProcessTargets(targets, "Unsafe PIDs", "Prompt?", false, true, 40, "")
 	if reclaimed != 0 {
 		t.Errorf("KillProcessTargets() reclaimed unsafe PIDs = %d, want 0", reclaimed)
+	}
+}
+
+func TestKillProcessTargetsRejectsOtherUID(t *testing.T) {
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Skipf("cannot start helper process: %v", err)
+	}
+	defer func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	}()
+	pid := cmd.Process.Pid
+	ticks := proc.ReadStartTicks(pid)
+	if ticks == 0 {
+		t.Skip("cannot read helper start ticks")
+	}
+
+	oldUID := readProcUID
+	defer func() { readProcUID = oldUID }()
+
+	tests := []struct {
+		name string
+		read func(int) (uint32, error)
+	}{
+		{"other-uid", func(int) (uint32, error) { return uint32(os.Getuid()) + 1, nil }},
+		{"uid-unreadable", func(int) (uint32, error) { return 0, errors.New("denied") }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readProcUID = tt.read
+			targets := []model.SwapItem{{
+				PID: pid, StartTicks: ticks, Name: "sleep", SwapBytes: 1 << 20,
+			}}
+			if reclaimed := KillProcessTargets(targets, "Ownership", "Prompt?", false, true, 40, ""); reclaimed != 0 {
+				t.Errorf("reclaimed = %d, want 0", reclaimed)
+			}
+			if err := syscall.Kill(pid, 0); err != nil {
+				t.Errorf("helper process was signalled: %v", err)
+			}
+		})
 	}
 }
 

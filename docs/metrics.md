@@ -23,8 +23,26 @@ Every byte on the screen is one of three things: a kernel total, a category sum,
 | `MemTotal` | `MemTotal` | `/proc/meminfo` | no |
 | `MemAvailable` | `MemAvailable` | `/proc/meminfo` | no |
 | `MemUsed` | `MemTotal - MemAvailable` | derived | no |
+| `MemFree` | `MemFree` | `/proc/meminfo` | no |
+| `Buffers` | `Buffers` | `/proc/meminfo` | no |
+| `Cached` | `Cached` | `/proc/meminfo` | no |
+| `SReclaimable` | `SReclaimable` | `/proc/meminfo` | no |
+| `Shmem` | `Shmem` | `/proc/meminfo` | no |
+| `Dirty` | `Dirty` | `/proc/meminfo` | no |
+| `Writeback` | `Writeback` | `/proc/meminfo` | no |
+| `PageCacheBytes` | `max(0, Buffers + Cached + SReclaimable - Shmem)` | derived | no |
+| `SwapDeviceUsed` | `Used` for one area | `/proc/swaps` | no |
+| `DrainUsed` | `Σ Used` over drainable devices | plan | no |
+| `DrainReserve` | `max(512 MiB, MemTotal / 10)` unless overridden | plan | no |
+| `DrainHeadroom` | `MemAvailable - DrainUsed - DrainReserve` | plan | no |
+| `PressureSomeAvg10` | `some avg10` | `/proc/pressure/memory` | no |
+| `PressureFullAvg10` | `full avg10` | `/proc/pressure/memory` | no |
 | `AllocatedBytes` | `Stat_t.Blocks * 512` for files and directories | `Lstat` / walk | yes |
 | `ApparentBytes` | `info.Size()` sum for files | walk | yes, display/JSON only |
+
+`PageCacheBytes` excludes `Shmem` because `/proc/sys/vm/drop_caches` does not
+free tmpfs pages. The swap-drain reserve and headroom are planning values; they
+are not additive memory pools.
 
 `RAM used` means `total - available`. It is not the sum of process RSS, PSS, or `VmSwap`, and it is never compared with those sums.
 
