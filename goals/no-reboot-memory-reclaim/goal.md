@@ -1,5 +1,12 @@
 # Goal: Clean Swap and RAM Without Reboot via Guarded Swap Drain and Cache Reclaim
 
+## Chain of Custody (Isnad)
+- **Registered By**: CommandCode, 2026-11-02
+- **Spec Audited By**: CommandCode plan review, 2026-11-02
+- **Implemented By**: CommandCode, commit `64c451f`, 2026-11-02
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_no-reboot-memory-reclaim_1793629086`
+
+
 ## Goal Description
 Add a root-gated reclaim command that drains active swap devices back into RAM and optionally drops clean page cache, with feasibility math, per-device restore guarantees, zram awareness, and live receipts.
 
