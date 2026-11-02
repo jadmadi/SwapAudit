@@ -404,7 +404,7 @@ Raw artifacts: `live-run.txt` (full console transcript) and
     "grounding": "15/16 file-referenced facts grounded; 2 pre-existing missing files: goals/sila-cc-program/goal.md, goals/sila-cc-preflight/goal.md"
   },
   "handoff": {
-    "id": "hoff_f541a8aff845"
+    "id": "hoff_2f8319e467d1"
   }
 }
 ```
