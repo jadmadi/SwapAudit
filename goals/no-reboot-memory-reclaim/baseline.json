@@ -1,0 +1,7 @@
+{
+  "goal_slug": "no-reboot-memory-reclaim",
+  "patch_id": "8ae80dcd96bf843536074c63d5a3ebba5377a801",
+  "base_ref": "main",
+  "recorded_at": "2026-11-02T14:17:18.695736956Z",
+  "certified_by": "re-test-certified"
+}

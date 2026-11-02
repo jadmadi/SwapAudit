@@ -17,6 +17,7 @@ import (
 var DefaultTmpPatterns = []string{
 	"go-build*", "Test*", "test*", "test-bwrap*", "tsx-*",
 	"tmp-*", "temp-*", "rustup-update*", "cargo-install*", "npm-*",
+	"commandcode*", "command-code*", "opencode*", "muse-*",
 }
 
 // MatchTmpPattern checks if a directory name matches a shell pattern or prefix.
@@ -30,6 +31,16 @@ func MatchTmpPattern(pattern, name string) bool {
 		return true
 	}
 	return false
+}
+
+// allocatedBytes returns the filesystem blocks reserved for a file or
+// directory. Reclaim estimates use allocated blocks so sparse files are not
+// overstated; apparent size is not a reclaimable-bytes claim.
+func allocatedBytes(info fs.FileInfo) int64 {
+	if st, ok := info.Sys().(*syscall.Stat_t); ok {
+		return st.Blocks * 512
+	}
+	return info.Size()
 }
 
 // ScanTmpDirectories scans /tmp for stale caches, abandoned runs, and temporary build outputs.
@@ -120,8 +131,8 @@ func ScanTmpDirectoriesIn(baseDir string, now time.Time, maxAge time.Duration, p
 			_ = filepath.WalkDir(fullPath, func(path string, d fs.DirEntry, walkErr error) error {
 				if walkErr == nil && d != nil {
 					if info, err := d.Info(); err == nil {
-						if !d.IsDir() {
-							size += info.Size()
+						if info.Mode()&os.ModeSymlink == 0 {
+							size += allocatedBytes(info)
 						}
 						if info.ModTime().After(newestMtime) {
 							newestMtime = info.ModTime()
@@ -131,7 +142,7 @@ func ScanTmpDirectoriesIn(baseDir string, now time.Time, maxAge time.Duration, p
 				return nil
 			})
 		} else {
-			size = fi.Size()
+			size = allocatedBytes(fi)
 		}
 
 		age := now.Sub(fi.ModTime())

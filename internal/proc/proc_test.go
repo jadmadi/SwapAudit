@@ -19,6 +19,7 @@ Tgid:	12345
 Ngid:	0
 Pid:	12345
 PPid:	6789
+VmRSS:	   16384 kB
 VmSwap:	    2048 kB
 `
 	swapBytes, ppid := ParseProcStatus(strings.NewReader(statusContent))
@@ -26,12 +27,23 @@ VmSwap:	    2048 kB
 		t.Errorf("ParseProcStatus() swapBytes = %d, want %d", swapBytes, 2048*1024)
 	}
 	if ppid != 6789 {
-		t.Errorf("ParseProcStatus() ppid = %d, want %d", ppid, 6789)
+		t.Errorf("ParseProcStatus() ppid = %d, want 6789", ppid)
 	}
 
 	vmSwapOnly := ParseVmSwap(strings.NewReader(statusContent))
 	if vmSwapOnly != 2048*1024 {
 		t.Errorf("ParseVmSwap() = %d, want %d", vmSwapOnly, 2048*1024)
+	}
+
+	mem := ParseProcMemory(strings.NewReader(statusContent))
+	if mem.SwapBytes != 2048*1024 {
+		t.Errorf("ParseProcMemory() SwapBytes = %d, want %d", mem.SwapBytes, 2048*1024)
+	}
+	if mem.RSSBytes != 16384*1024 {
+		t.Errorf("ParseProcMemory() RSSBytes = %d, want %d", mem.RSSBytes, 16384*1024)
+	}
+	if mem.PPid != 6789 {
+		t.Errorf("ParseProcMemory() PPid = %d, want %d", mem.PPid, 6789)
 	}
 }
 
@@ -54,9 +66,12 @@ MemFree:         4123456 kB
 MemAvailable:   22891234 kB
 Buffers:          345678 kB
 Cached:          8765432 kB
+SReclaimable:     512000 kB
+Shmem:            256000 kB
 SwapTotal:      17924092 kB
 SwapFree:       14159872 kB
 Dirty:               128 kB
+Writeback:            64 kB
 `
 	s := ParseMeminfo(strings.NewReader(meminfoContent))
 
@@ -73,6 +88,18 @@ Dirty:               128 kB
 	if s.MemAvail != expectedMemAvail {
 		t.Errorf("s.MemAvail = %d, want %d", s.MemAvail, expectedMemAvail)
 	}
+	if s.MemFree != 4123456*1024 {
+		t.Errorf("s.MemFree = %d, want %d", s.MemFree, int64(4123456)*1024)
+	}
+	if s.Buffers != 345678*1024 || s.Cached != 8765432*1024 {
+		t.Errorf("buffers/cached = %d/%d, want 345678/8765432 KiB", s.Buffers, s.Cached)
+	}
+	if s.SReclaimable != 512000*1024 || s.Shmem != 256000*1024 {
+		t.Errorf("sreclaimable/shmem = %d/%d, want 512000/256000 KiB", s.SReclaimable, s.Shmem)
+	}
+	if s.Dirty != 128*1024 || s.Writeback != 64*1024 {
+		t.Errorf("dirty/writeback = %d/%d, want 128/64 KiB", s.Dirty, s.Writeback)
+	}
 	if s.MemUsed != expectedMemUsed {
 		t.Errorf("s.MemUsed = %d, want %d", s.MemUsed, expectedMemUsed)
 	}
@@ -84,6 +111,173 @@ Dirty:               128 kB
 	}
 	if s.SwapUsed != expectedSwapUsed {
 		t.Errorf("s.SwapUsed = %d, want %d", s.SwapUsed, expectedSwapUsed)
+	}
+	wantCache := int64(345678+8765432+512000-256000) * 1024
+	if got := s.PageCacheBytes(); got != wantCache {
+		t.Errorf("PageCacheBytes() = %d, want %d", got, wantCache)
+	}
+}
+
+func TestParseSwaps(t *testing.T) {
+	content := `Filename				Type		Size		Used		Priority
+/dev/nvme0n1p3                          partition	17892336	5242880		-2
+/swapfile                               file		8388608		1048576		10
+`
+	devices, err := ParseSwaps(strings.NewReader(content))
+	if err != nil {
+		t.Fatalf("ParseSwaps() error = %v", err)
+	}
+	if len(devices) != 2 {
+		t.Fatalf("ParseSwaps() = %d devices, want 2", len(devices))
+	}
+	first := devices[0]
+	if first.Filename != "/dev/nvme0n1p3" || first.Type != "partition" {
+		t.Errorf("first device = %+v, want partition /dev/nvme0n1p3", first)
+	}
+	if first.SizeBytes != 17892336*1024 || first.UsedBytes != 5242880*1024 {
+		t.Errorf("first size/used = %d/%d, want 17892336/5242880 KiB", first.SizeBytes, first.UsedBytes)
+	}
+	if first.Priority != -2 {
+		t.Errorf("first priority = %d, want -2", first.Priority)
+	}
+	if devices[1].Filename != "/swapfile" || devices[1].Priority != 10 {
+		t.Errorf("second device = %+v, want /swapfile priority 10", devices[1])
+	}
+}
+
+func TestParseSwapsMalformedLinesAreSkipped(t *testing.T) {
+	content := `Filename Type Size Used Priority
+only three fields
+/dev/sda2 partition notanumber 0 -2
+/dev/sdb1 partition 1024 0 -2
+`
+	devices, err := ParseSwaps(strings.NewReader(content))
+	if err != nil {
+		t.Fatalf("ParseSwaps() error = %v", err)
+	}
+	if len(devices) != 1 || devices[0].Filename != "/dev/sdb1" {
+		t.Fatalf("devices = %+v, want only /dev/sdb1", devices)
+	}
+}
+
+func TestIsZramDevice(t *testing.T) {
+	cases := map[string]bool{
+		"/dev/zram0":     true,
+		"/dev/zram12":    true,
+		"zram0":          true,
+		"/dev/nvme0n1p3": false,
+		"/swapfile":      false,
+		"/dev/sda2":      false,
+	}
+	for name, want := range cases {
+		if got := IsZramDevice(name); got != want {
+			t.Errorf("IsZramDevice(%q) = %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestParseMemoryPressure(t *testing.T) {
+	content := `some avg10=1.25 avg60=0.50 avg300=0.10 total=123456
+full avg10=0.75 avg60=0.25 avg300=0.05 total=654321
+`
+	p := ParseMemoryPressure(strings.NewReader(content))
+	if !p.Available {
+		t.Fatal("Available = false, want true")
+	}
+	if p.SomeAvg10 != 1.25 || p.SomeAvg60 != 0.50 || p.SomeAvg300 != 0.10 {
+		t.Errorf("some = %v/%v/%v, want 1.25/0.50/0.10", p.SomeAvg10, p.SomeAvg60, p.SomeAvg300)
+	}
+	if p.FullAvg10 != 0.75 || p.FullAvg60 != 0.25 || p.FullAvg300 != 0.05 {
+		t.Errorf("full = %v/%v/%v, want 0.75/0.25/0.05", p.FullAvg10, p.FullAvg60, p.FullAvg300)
+	}
+}
+
+func TestParseMemoryPressureUnavailable(t *testing.T) {
+	p := ParseMemoryPressure(strings.NewReader(""))
+	if p.Available {
+		t.Error("Available = true, want false on an empty file")
+	}
+}
+
+func TestParseProcStatusUID(t *testing.T) {
+	content := "Name:\tollama\nUid:\t999\t999\t999\t999\nGid:\t999\t999\t999\t999\n"
+	uid, err := ParseProcStatusUID(strings.NewReader(content))
+	if err != nil {
+		t.Fatalf("ParseProcStatusUID() error = %v", err)
+	}
+	if uid != 999 {
+		t.Errorf("uid = %d, want 999", uid)
+	}
+
+	if _, err := ParseProcStatusUID(strings.NewReader("Name:\tbroken\n")); err == nil {
+		t.Error("ParseProcStatusUID() on missing Uid line should fail")
+	}
+}
+
+func TestReadLiveProcIdentity(t *testing.T) {
+	pid := os.Getpid()
+	if uid, err := ReadProcUID(pid); err != nil || uid != uint32(os.Getuid()) {
+		t.Errorf("ReadProcUID(%d) = %d, %v; want %d", pid, uid, err, os.Getuid())
+	}
+	if cgroup := ReadProcessCgroup(pid); cgroup == "" {
+		t.Error("ReadProcessCgroup() returned empty for the current process")
+	}
+	_ = ReadTTYNr(pid)
+}
+
+func TestClassifyOrphan(t *testing.T) {
+	tests := []struct {
+		name        string
+		parentAlive bool
+		parentComm  string
+		cgroup      string
+		ttyNr       int64
+		wantReason  string
+		wantOrphan  bool
+	}{
+		{
+			name:        "live shell parent",
+			parentAlive: true, parentComm: "bash", cgroup: "/user.slice/session-1.scope", ttyNr: 34816,
+			wantReason: "parent-alive", wantOrphan: false,
+		},
+		{
+			name:        "systemd service is never orphaned",
+			parentAlive: false, cgroup: "/system.slice/ollama.service", ttyNr: 0,
+			wantReason: "systemd-service", wantOrphan: false,
+		},
+		{
+			name:        "user service with scope is not orphaned without a tty",
+			parentAlive: false, cgroup: "/user.slice/user@1000.service/app.slice/app.scope", ttyNr: 0,
+			wantReason: "no-controlling-terminal", wantOrphan: false,
+		},
+		{
+			name:        "reparented terminal scope",
+			parentAlive: false, cgroup: "/user.slice/session-3.scope", ttyNr: 34816,
+			wantReason: "reparented-terminal-scope", wantOrphan: true,
+		},
+		{
+			name:        "terminal without scope is ambiguous",
+			parentAlive: false, cgroup: "/user.slice/user-1000.slice", ttyNr: 34816,
+			wantReason: "ambiguous-evidence", wantOrphan: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reason, orphan := classifyOrphan(tt.parentAlive, tt.parentComm, tt.cgroup, tt.ttyNr)
+			if reason != tt.wantReason || orphan != tt.wantOrphan {
+				t.Errorf("classifyOrphan() = (%q, %v), want (%q, %v)", reason, orphan, tt.wantReason, tt.wantOrphan)
+			}
+		})
+	}
+}
+
+func TestClassifyOrphanOllamaLiveShape(t *testing.T) {
+	reason, orphan := classifyOrphan(false, "", "/system.slice/ollama.service", 0)
+	if orphan {
+		t.Fatalf("ollama.service shape classified as orphaned (%s)", reason)
+	}
+	if reason != "systemd-service" {
+		t.Errorf("reason = %q, want systemd-service", reason)
 	}
 }
 
@@ -148,21 +342,6 @@ func TestCalcProcessAge(t *testing.T) {
 	}
 	if ageZero := CalcProcessAge(0, bootTime); ageZero != 0 {
 		t.Errorf("CalcProcessAge(0) = %v, want 0", ageZero)
-	}
-}
-
-func TestIsProcessOrphaned(t *testing.T) {
-	if !IsProcessOrphaned(1) {
-		t.Errorf("IsProcessOrphaned(1) = false, want true")
-	}
-	if !IsProcessOrphaned(0) {
-		t.Errorf("IsProcessOrphaned(0) = false, want true")
-	}
-	if !IsProcessOrphaned(-1) {
-		t.Errorf("IsProcessOrphaned(-1) = false, want true")
-	}
-	if !IsProcessOrphaned(9999999) {
-		t.Errorf("IsProcessOrphaned(9999999) = false, want true")
 	}
 }
 

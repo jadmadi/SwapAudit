@@ -1,5 +1,11 @@
 # Output layout contract
 
+> **Implementation status (2026-11-02):** this file describes an earlier
+> grouped-verdict layout. The current report is documented in
+> [`README.md`](../README.md) and `internal/app/display.go`. The invariant that
+> still applies is that every rendered byte comes from a kernel counter, a
+> category sum, or an explicit residual.
+
 The default output is one answer, then evidence, then actions. All tables are formula-driven; no hardcoded `w-82` offsets.
 
 ## Identity

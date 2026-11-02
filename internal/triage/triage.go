@@ -29,11 +29,17 @@ func CategorizeProcess(comm string, argv []string, pid, ppid int, isOrphaned boo
 	}
 
 	isAgent := comm == "agy" || comm == "devin" || comm == "chrome-devtools-mcp" || comm == "chrome-devtools" ||
-		binName == "agy" || binName == "devin" || binName == "antigravity" || binName == "chrome-devtools-mcp"
+		binName == "agy" || binName == "devin" || binName == "antigravity" || binName == "chrome-devtools-mcp" ||
+		comm == "muse" || strings.HasPrefix(binName, "muse-bin") || comm == "opencode" || binName == "opencode" ||
+		comm == "commandcode" || binName == "commandcode" || binName == "command-code" || binName == "cmd"
 
 	if !isAgent {
 		for _, arg := range argv {
-			if arg == "--conversation" || arg == "chrome-devtools-mcp" || filepath.Base(arg) == "chrome-devtools-mcp" {
+			baseArg := filepath.Base(arg)
+			if arg == "--conversation" || arg == "chrome-devtools-mcp" || baseArg == "chrome-devtools-mcp" ||
+				strings.HasPrefix(baseArg, "mcp-server-") ||
+				strings.HasSuffix(baseArg, "-mcp") || strings.HasSuffix(baseArg, "-mcp-server") ||
+				strings.Contains(arg, "commandcode") || strings.Contains(arg, "command-code") {
 				isAgent = true
 				break
 			}
@@ -59,10 +65,11 @@ func AggregateShells(items []model.SwapItem) []model.SwapItem {
 	grouped := make(map[string]*model.SwapItem)
 
 	for _, it := range items {
-		if it.PID > 0 && it.SwapBytes < 20*1024*1024 && (it.Name == "bash" || it.Name == "sh" || it.Name == "zsh") {
+		if it.PID > 0 && it.SwapBytes < 20*1024*1024 && it.RSSBytes < 20*1024*1024 && (it.Name == "bash" || it.Name == "sh" || it.Name == "zsh") {
 			key := it.Name
 			if g, ok := grouped[key]; ok {
 				g.SwapBytes += it.SwapBytes
+				g.RSSBytes += it.RSSBytes
 				g.Count++
 				if it.LastActive >= 0 {
 					if g.LastActive < 0 || it.LastActive < g.LastActive {

@@ -42,6 +42,21 @@ The published amd64 binary also ran in Debian bookworm-slim and Alpine 3.20 cont
 - Dated `docs/research/decision.md` with Proceed/Narrow/Stop/Inconclusive.
 - Lifting or keeping the feature freeze based on that decision.
 
+## External engagement (X)
+
+On 2026-11-02 the maintainer posted a public question about swap and `/tmp`
+pressure on X.
+
+| Date | Type | From | Summary | Link |
+| --- | --- | --- | --- | --- |
+| 2026-11-02 | X reply | @sebuzdugan | Deleting `/tmp` files does not free space while agent subprocesses hold them open; stop the processes first. | Permalink pending |
+
+Counts: 1 external reply, 0 GitHub issues, 0 discussions.
+
+The reply matches the open-handle gap in `docs/safety.md` and is recorded in
+`docs/research/feature-backlog.md`. It is paraphrased; no verbatim quote is
+stored without permission.
+
 ## Notes
 
 - The public install test satisfies the distribution half of this goal.

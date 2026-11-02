@@ -4,6 +4,15 @@ Thank you for contributing to swapaudit.
 
 swapaudit is an open-source tool dedicated as an Islamic digital endowment (Waqf) under the Waqf Digital Public License (Level 2: WaqfDPL-Mulzim 1.0) and dual-licensed under GNU AGPLv3. Governance guidelines are codified in [GOVERNANCE.md](GOVERNANCE.md) and maintainer information in [MAINTAINERS.md](MAINTAINERS.md).
 
+## Feature freeze
+
+The project is under a feature freeze until demand validation produces a
+decision. Read [docs/research/README.md](docs/research/README.md) before
+proposing a new scanner, agent runtime, cleanup category, output format, or
+package-manager package. Record the request in
+[docs/research/feature-backlog.md](docs/research/feature-backlog.md) instead of
+opening a feature pull request.
+
 ## Developer Certificate of Origin (DCO)
 
 All contributors must certify that they wrote or have the right to submit the code they are contributing. To certify, include a `Signed-off-by` trailer in every git commit:

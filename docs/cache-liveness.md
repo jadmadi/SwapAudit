@@ -1,5 +1,11 @@
 # Cache liveness contract
 
+> **Implementation status (2026-11-02):** this document describes the
+> cache-liveness design certified in `goals/cache-liveness-classification`.
+> The implementation is not present at the current revision. The checks that
+> actually run are listed in [`safety.md`](safety.md#cache-deletion-recheck).
+> Treat this file as a design contract for the follow-up, not current behavior.
+
 Cache classification is evidence-first. mtime is only one signal; an open descriptor, a process cwd, or a file-backed mapping always wins.
 
 ## Categories

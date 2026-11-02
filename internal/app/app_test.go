@@ -115,6 +115,9 @@ func TestRunDefaultExecution(t *testing.T) {
 	if !strings.Contains(output, "SWAP & IN-MEMORY CACHE AUDITOR") {
 		t.Errorf("Run() output missing audit header: %q", output)
 	}
+	if !strings.Contains(output, "No-Reboot Reclaim Readiness") {
+		t.Errorf("Run() output missing reclaim readiness: %q", output)
+	}
 	if !strings.Contains(output, "Quick Maintenance Commands") {
 		t.Errorf("Run() without clean flags missing quick commands: %q", output)
 	}
@@ -148,6 +151,119 @@ func captureRun(t *testing.T, args []string) (int, string, string) {
 		t.Fatalf("ReadFile failed: %v", err)
 	}
 	return code, string(outBytes), string(errBytes)
+}
+
+func TestSelectCleanup(t *testing.T) {
+	cases := []struct {
+		name                                            string
+		all, tmp, untouched, abandoned, dormant, orphan bool
+		want                                            cleanupSelection
+	}{
+		{"none", false, false, false, false, false, false, cleanupSelection{}},
+		{"all excludes orphaned", true, false, false, false, false, false,
+			cleanupSelection{untouched: true, abandoned: true, dormant: true}},
+		{"all plus explicit orphaned", true, false, false, false, false, true,
+			cleanupSelection{untouched: true, abandoned: true, dormant: true, orphaned: true}},
+		{"tmp only", false, true, false, false, false, false,
+			cleanupSelection{untouched: true, abandoned: true}},
+		{"explicit orphaned only", false, false, false, false, false, true,
+			cleanupSelection{orphaned: true}},
+		{"explicit untouched", false, false, true, false, false, false,
+			cleanupSelection{untouched: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := selectCleanup(tc.all, tc.tmp, tc.untouched, tc.abandoned, tc.dormant, tc.orphan)
+			if got != tc.want {
+				t.Errorf("selectCleanup() = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunCleanupRequiresTTYOrYes(t *testing.T) {
+	oldStdin := os.Stdin
+	null, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatalf("open %s: %v", os.DevNull, err)
+	}
+	os.Stdin = null
+	defer func() {
+		os.Stdin = oldStdin
+		null.Close()
+	}()
+
+	code, _, stderr := captureRun(t, []string{"--clean-all"})
+	if code != 2 {
+		t.Fatalf("exit code = %d, want 2 (stderr: %s)", code, stderr)
+	}
+	if !strings.Contains(stderr, "cleanup requires --dry-run or --yes when stdin is not a terminal") {
+		t.Errorf("stderr = %q, want the non-TTY cleanup error", stderr)
+	}
+}
+
+func TestParseByteSize(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want int64
+		ok   bool
+	}{
+		{"512MiB", 512 << 20, true},
+		{"2GiB", 2 << 30, true},
+		{"1.5GB", 1_500_000_000, true},
+		{"1024", 1024, true},
+		{"0", 0, true},
+		{"", 0, false},
+		{"nope", 0, false},
+		{"-1GiB", 0, false},
+	}
+	for _, tc := range cases {
+		got, err := parseByteSize(tc.raw)
+		if tc.ok {
+			if err != nil || got != tc.want {
+				t.Errorf("parseByteSize(%q) = %d, %v; want %d, nil", tc.raw, got, err, tc.want)
+			}
+			continue
+		}
+		if err == nil {
+			t.Errorf("parseByteSize(%q) = %d, nil; want error", tc.raw, got)
+		}
+	}
+}
+
+func TestRunReclaimDryRunJSON(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"reclaim", "--dry-run", "--json"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	if stderr != "" {
+		t.Errorf("stderr = %q, want empty", stderr)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(stdout), &doc); err != nil {
+		t.Fatalf("stdout is not one JSON document: %v\n%s", err, stdout)
+	}
+	if doc["schema_version"].(float64) != 1 {
+		t.Errorf("schema_version = %v, want 1", doc["schema_version"])
+	}
+	if doc["result"] != "dry-run" {
+		t.Errorf("result = %v, want dry-run", doc["result"])
+	}
+	if doc["action"] == "" {
+		t.Error("action must not be empty")
+	}
+}
+
+func TestRunReclaimDryRunHuman(t *testing.T) {
+	code, stdout, stderr := captureRun(t, []string{"reclaim", "--dry-run", "--no-color"})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0 (stderr: %s)", code, stderr)
+	}
+	for _, want := range []string{"SYSTEM RECLAIM", "Swap", "Reserve", "Page cache", "Plan"} {
+		if !strings.Contains(stdout, want) {
+			t.Errorf("reclaim output missing %q:\n%s", want, stdout)
+		}
+	}
 }
 
 func TestModeValidation(t *testing.T) {

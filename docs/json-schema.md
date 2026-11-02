@@ -39,6 +39,14 @@ unknown fields.
 | `system.mem_total_bytes` | integer | no | Bytes; never negative. |
 | `system.mem_used_bytes` | integer | no | Bytes; never negative. |
 | `system.mem_available_bytes` | integer | no | Bytes; never negative. |
+| `system.mem_free_bytes` | integer | yes | Omitted when zero. |
+| `system.buffers_bytes` | integer | yes | Omitted when zero. |
+| `system.cached_bytes` | integer | yes | Omitted when zero. |
+| `system.sreclaimable_bytes` | integer | yes | Omitted when zero. |
+| `system.shmem_bytes` | integer | yes | Omitted when zero. |
+| `system.dirty_bytes` | integer | yes | Omitted when zero. |
+| `system.writeback_bytes` | integer | yes | Omitted when zero. |
+| `system.page_cache_bytes` | integer | yes | Omitted when zero; `max(0, buffers + cached + sreclaimable - shmem)`. |
 | `system.tmpfs_total_bytes` | integer | no | Bytes; never negative. |
 | `system.tmpfs_used_bytes` | integer | no | Bytes; never negative. |
 | `totals.items` | integer | no | `len(items)`. |
