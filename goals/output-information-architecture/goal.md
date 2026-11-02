@@ -3,8 +3,8 @@
 ## Chain of Custody (Isnad)
 
 - **Registered By**: UI review follow-up, 2026-10-19
-- **Spec Audited By**: CommandCode, 2026-10-20 (acceptance criteria checked against tests and evidence)
-- **Implemented By**: CommandCode, 2026-10-20 (see `evidence.md`)
+- **Spec Audited By**: Jad Madi, 2026-10-20 (acceptance criteria checked against tests and evidence)
+- **Implemented By**: Jad Madi, 2026-10-20 (see `evidence.md`)
 - **Mystery Audited By**: Evidence certification, 2026-10-20 (see `certification.json`; independent mystery audit not run)
 
 ## Goal Description
