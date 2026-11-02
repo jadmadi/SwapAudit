@@ -8,7 +8,7 @@
   "facts_passed": 1,
   "facts_total": 1,
   "evidence_kind": "review_document",
-  "commit_sha": "0167195a1e35f4e0111952d55369c408873917ec",
+  "commit_sha": "12c9efe46aba37417ea1463a75043558ac7706fa",
   "memory_required": true,
   "memory_verified": true,
   "memory": {
