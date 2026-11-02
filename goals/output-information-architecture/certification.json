@@ -1,7 +1,7 @@
 {
   "goal_slug": "output-information-architecture",
   "certified_at": "2026-10-20T06:20:58.446497083Z",
-  "certified_by": "command-code",
+  "certified_by": "jadmadi",
   "evidence_file": "/home/jad/scripts/active/swapaudit/goals/output-information-architecture/evidence.md",
   "note": "Implementation, tests, and goal-specific evidence verified.",
   "verified": true,

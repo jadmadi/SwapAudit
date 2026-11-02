@@ -1,7 +1,7 @@
 {
   "goal_slug": "live-sampler-rates",
   "certified_at": "2026-10-21T08:35:19.423221288Z",
-  "certified_by": "command-code",
+  "certified_by": "jadmadi",
   "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/.sila/evidence/live-sampler-rates-contract.json",
   "note": "auto-certified via immutable contract in 46ms",
   "verified": true,
