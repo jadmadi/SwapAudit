@@ -17,6 +17,7 @@ import (
 var DefaultTmpPatterns = []string{
 	"go-build*", "Test*", "test*", "test-bwrap*", "tsx-*",
 	"tmp-*", "temp-*", "rustup-update*", "cargo-install*", "npm-*",
+	"commandcode*", "command-code*", "opencode*", "muse-*",
 }
 
 // MatchTmpPattern checks if a directory name matches a shell pattern or prefix.
