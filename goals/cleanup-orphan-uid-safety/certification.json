@@ -1,7 +1,7 @@
 {
   "goal_slug": "cleanup-orphan-uid-safety",
   "certified_at": "2026-10-20T06:21:26.211272747Z",
-  "certified_by": "command-code",
+  "certified_by": "jadmadi",
   "evidence_file": "/home/jad/scripts/active/swapaudit/goals/cleanup-orphan-uid-safety/evidence.md",
   "note": "Implementation and evidence verified; attributed to 625b929.",
   "verified": true,

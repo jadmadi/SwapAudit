@@ -1,7 +1,7 @@
 {
   "goal_slug": "updater-dev-version-compare",
   "certified_at": "2026-11-01T13:43:41.098885305Z",
-  "certified_by": "command-code",
+  "certified_by": "jadmadi",
   "evidence_file": "/mnt/Jad/github/projects/jadmadi/swapaudit/goals/updater-dev-version-compare/evidence.md",
   "note": "certified from review document: evidence.md",
   "verified": true,

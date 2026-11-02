@@ -3,8 +3,8 @@
 ## Chain of Custody (Isnad)
 
 - **Registered By**: UI review follow-up, 2026-10-19
-- **Spec Audited By**: CommandCode, 2026-10-20 (acceptance criteria checked against tests and evidence)
-- **Implemented By**: CommandCode, 2026-10-20 (see `evidence.md`)
+- **Spec Audited By**: Jad Madi, 2026-10-20 (acceptance criteria checked against tests and evidence)
+- **Implemented By**: Jad Madi, 2026-10-20 (see `evidence.md`)
 - **Mystery Audited By**: Evidence certification, 2026-10-20 (see `certification.json`; independent mystery audit not run)
 
 ## Goal Description
@@ -457,4 +457,4 @@ Add a small `scripts/check-accounting.sh` only if it can parse the report withou
 - `internal/app/app.go:63-77` — swap-only process inclusion.
 - `internal/cleaner/cleaner.go:187-189`, `:358-370` — hidden count and split cleanup summary.
 - `internal/model/model.go:19-60` — item and system types.
-- Live capture: `$COMMANDCODE_SCRATCHPAD/audit.txt` (this session) and independent `/proc` sums.
+- Live capture: `session scratchpad/audit.txt` (this session) and independent `/proc` sums.
