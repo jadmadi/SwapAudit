@@ -14,6 +14,7 @@
 ### Phase 2 — Recruit five participants
 
 - [ ] List target channels (personal network, Go/Linux communities, agent-user communities).
+- [ ] Collect the maintainer's public X question-thread replies and screen them as recruitment leads.
 - [ ] Send a short recruitment note with purpose, time commitment, consent, and no compensation.
 - [ ] Screen against the target profile; record qualification reasons without PII.
 - [ ] Schedule 30–45 minute interviews.
