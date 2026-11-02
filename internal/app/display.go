@@ -59,8 +59,11 @@ func PrintActionableSection(items []model.SwapItem, showAll bool) {
 	for _, it := range items {
 		if it.Cleanable {
 			cleanables = append(cleanables, it)
-			totalReclaimTmp += it.SizeBytes
-			totalReclaimSwap += it.SwapBytes
+			if it.SizeBytes > 0 {
+				totalReclaimTmp += it.SizeBytes
+			} else {
+				totalReclaimSwap += model.ItemSize(it)
+			}
 		}
 	}
 
@@ -192,6 +195,26 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 			}
 			return displayItems[i].Name < displayItems[j].Name
 		})
+	} else if sortBy == "swap" {
+		sort.SliceStable(displayItems, func(i, j int) bool {
+			if displayItems[i].SwapBytes != displayItems[j].SwapBytes {
+				return displayItems[i].SwapBytes > displayItems[j].SwapBytes
+			}
+			if displayItems[i].PID != displayItems[j].PID {
+				return displayItems[i].PID < displayItems[j].PID
+			}
+			return displayItems[i].Name < displayItems[j].Name
+		})
+	} else if sortBy == "ram" {
+		sort.SliceStable(displayItems, func(i, j int) bool {
+			if displayItems[i].RSSBytes != displayItems[j].RSSBytes {
+				return displayItems[i].RSSBytes > displayItems[j].RSSBytes
+			}
+			if displayItems[i].PID != displayItems[j].PID {
+				return displayItems[i].PID < displayItems[j].PID
+			}
+			return displayItems[i].Name < displayItems[j].Name
+		})
 	} else {
 		sort.SliceStable(displayItems, func(i, j int) bool {
 			si := model.ItemSize(displayItems[i])
@@ -212,8 +235,8 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 	var cols []model.Col
 	var targetWidth int
 	w := term.TermWidth()
-	if w >= 100 {
-		targetWidth = w - 68
+	if w >= 110 {
+		targetWidth = w - 78
 		if targetWidth < 12 {
 			targetWidth = 12
 		}
@@ -221,7 +244,27 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 			{Title: "PID", Width: 9},
 			{Title: "Target / Command", Width: targetWidth},
 			{Title: "Category", Width: 16},
-			{Title: "Size", Width: 10, Right: true},
+			{Title: "RAM", Width: 10, Right: true},
+			{Title: "Swap", Width: 10, Right: true},
+			{Title: "Age", Width: 8, Right: true},
+			{Title: "Idle", Width: 8, Right: true},
+		}
+	} else if w >= 90 {
+		targetWidth = w - 68
+		if targetWidth < 12 {
+			targetWidth = 12
+		}
+		sizeColTitle := "Size"
+		if sortBy == "ram" {
+			sizeColTitle = "RAM"
+		} else if sortBy == "swap" {
+			sizeColTitle = "Swap"
+		}
+		cols = []model.Col{
+			{Title: "PID", Width: 9},
+			{Title: "Target / Command", Width: targetWidth},
+			{Title: "Category", Width: 16},
+			{Title: sizeColTitle, Width: 10, Right: true},
 			{Title: "Age", Width: 8, Right: true},
 			{Title: "Idle", Width: 8, Right: true},
 		}
@@ -230,6 +273,12 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 		if targetWidth < 12 {
 			targetWidth = 12
 		}
+		sizeColTitle := "Size"
+		if sortBy == "ram" {
+			sizeColTitle = "RAM"
+		} else if sortBy == "swap" {
+			sizeColTitle = "Swap"
+		}
 		fourthCol := model.Col{Title: "Idle", Width: 8, Right: true}
 		if sortBy == "age" {
 			fourthCol = model.Col{Title: "Age", Width: 8, Right: true}
@@ -237,7 +286,7 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 		cols = []model.Col{
 			{Title: "PID", Width: 9},
 			{Title: "Target / Command", Width: targetWidth},
-			{Title: "Size", Width: 10, Right: true},
+			{Title: sizeColTitle, Width: 10, Right: true},
 			fourthCol,
 		}
 	}
@@ -274,12 +323,34 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 
 		name := term.Truncate(it.Name, targetWidth)
 
-		if w >= 100 {
+		ramBytes := it.RSSBytes
+		if it.SizeBytes > 0 && ramBytes == 0 {
+			ramBytes = it.SizeBytes // /tmp files live in tmpfs RAM
+		}
+
+		displaySz := sz
+		if sortBy == "ram" {
+			displaySz = ramBytes
+		} else if sortBy == "swap" {
+			displaySz = it.SwapBytes
+		}
+
+		if w >= 110 {
 			rows = append(rows, []string{
 				colPID,
 				name,
 				string(it.Category),
-				term.FormatBytes(sz),
+				term.FormatBytes(ramBytes),
+				term.FormatBytes(it.SwapBytes),
+				term.FormatDuration(it.Age),
+				term.FormatDuration(it.LastActive),
+			})
+		} else if w >= 90 {
+			rows = append(rows, []string{
+				colPID,
+				name,
+				string(it.Category),
+				term.FormatBytes(displaySz),
 				term.FormatDuration(it.Age),
 				term.FormatDuration(it.LastActive),
 			})
@@ -291,7 +362,7 @@ func PrintMainTable(items []model.SwapItem, sortBy string, limit int, showAll bo
 			rows = append(rows, []string{
 				colPID,
 				name,
-				term.FormatBytes(sz),
+				term.FormatBytes(displaySz),
 				fourthVal,
 			})
 		}
@@ -472,7 +543,7 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  watch                     Foreground threshold notifications over the sampler")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "AUDIT & DISPLAY FLAGS:")
-	fmt.Fprintln(w, "  --sort <size|age>         Sort column for occupant table (default: size)")
+	fmt.Fprintln(w, "  --sort <size|swap|ram|age> Sort column for occupant table (default: size)")
 	fmt.Fprintln(w, "  --limit <N>               Maximum rows to display in main table (default: 12)")
 	fmt.Fprintln(w, "  --all                     Display all processes individually without aggregation")
 	fmt.Fprintln(w, "  --max-age <duration>      Cutoff age for stale /tmp caches (default: 12h)")

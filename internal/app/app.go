@@ -65,10 +65,15 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 			continue
 		}
 
-		swapBytes, ppid := proc.ReadProcStatus(pid)
-		if swapBytes <= 0 {
-			continue
+		procMem := proc.ReadProcMemory(pid)
+		if procMem.SwapBytes <= 0 && procMem.RSSBytes < 10*1024*1024 {
+			// Skip processes with zero swap and under 10MB RSS to keep main table focused,
+			// unless marked as an orphaned or dormant agent below.
 		}
+
+		swapBytes := procMem.SwapBytes
+		rssBytes := procMem.RSSBytes
+		ppid := procMem.PPid
 
 		comm := proc.ReadComm(pid)
 		argv := proc.ReadCmdlineArgs(pid)
@@ -80,6 +85,10 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 		isOrphaned := proc.IsProcessOrphaned(ppid)
 
 		cat, cleanable := triage.CategorizeProcess(comm, argv, pid, ppid, isOrphaned, lastActive, idleThreshold)
+
+		if swapBytes <= 0 && rssBytes < 10*1024*1024 && !cleanable {
+			continue
+		}
 
 		dispName := comm
 		hasConv := false
@@ -110,6 +119,7 @@ func CollectSwapItems(now time.Time, uptimeSec float64, maxAge, idleThreshold ti
 			Command:      cmd,
 			Category:     cat,
 			SwapBytes:    swapBytes,
+			RSSBytes:     rssBytes,
 			Age:          age,
 			LastActive:   lastActive,
 			LastActiveAt: lastActiveAt,
@@ -633,7 +643,7 @@ func Run(args []string) int {
 	fs.SetOutput(io.Discard)
 
 	var (
-		sortBy         = fs.String("sort", "size", "Sort column: 'size' or 'age'")
+		sortBy         = fs.String("sort", "size", "Sort column: 'size', 'swap', 'ram', or 'age'")
 		cleanUntouched = fs.Bool("clean-untouched", false, "Clean untouched /tmp build and compile caches")
 		cleanAbandoned = fs.Bool("clean-abandoned", false, "Clean abandoned /tmp test and review runs")
 		cleanDormant   = fs.Bool("clean-dormant", false, "Stop dormant agent sessions")
@@ -725,8 +735,8 @@ func Run(args []string) int {
 
 	term.InitTerminal(*noColor, *ascii)
 
-	if *sortBy != "size" && *sortBy != "age" {
-		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size' or 'age')\n", *sortBy)
+	if *sortBy != "size" && *sortBy != "swap" && *sortBy != "ram" && *sortBy != "age" {
+		fmt.Fprintf(os.Stderr, "error: invalid --sort value %q (must be 'size', 'swap', 'ram', or 'age')\n", *sortBy)
 		if updateCancel != nil {
 			updateCancel()
 			<-updateDone

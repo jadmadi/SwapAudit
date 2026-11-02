@@ -393,7 +393,7 @@ swapaudit upgrade
 | Command or flag         | Default  | Description                                                           |
 | :---------------------- | :------- | :-------------------------------------------------------------------- |
 | upgrade                 | -        | Check GitHub releases and upgrade swapaudit in place                  |
-| --sort <size\|age>      | size     | Sort column for occupant tables: size or age                          |
+| --sort <size\|swap\|ram\|age> | size  | Sort column for occupant tables: size, swap, ram, or age               |
 | --limit <N>             | 12       | Maximum rows to display in the main occupants table                   |
 | --all                   | false    | Show all individual processes without grouping                        |
 | --clean-untouched       | false    | Prune stale build caches untouched beyond max-age                     |
