@@ -75,11 +75,16 @@ func ReadSystemSwap() model.SystemSwap {
 	return s
 }
 
-// ParseProcStatus extracts VmSwap (in bytes) and PPid from a /proc/[pid]/status reader.
-func ParseProcStatus(r io.Reader) (int64, int) {
-	var swapBytes int64
-	var ppid int
+// ProcMemory captures swap, resident physical memory, and parent PID from /proc/[pid]/status.
+type ProcMemory struct {
+	SwapBytes int64
+	RSSBytes  int64
+	PPid      int
+}
 
+// ParseProcMemory extracts VmSwap, VmRSS (in bytes), and PPid from a /proc/[pid]/status reader.
+func ParseProcMemory(r io.Reader) ProcMemory {
+	var m ProcMemory
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -87,32 +92,50 @@ func ParseProcStatus(r io.Reader) (int64, int) {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				val, _ := strconv.ParseInt(fields[1], 10, 64)
-				swapBytes = val * 1024
+				m.SwapBytes = val * 1024
+			}
+		} else if strings.HasPrefix(line, "VmRSS:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				val, _ := strconv.ParseInt(fields[1], 10, 64)
+				m.RSSBytes = val * 1024
 			}
 		} else if strings.HasPrefix(line, "PPid:") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
-				ppid, _ = strconv.Atoi(fields[1])
+				m.PPid, _ = strconv.Atoi(fields[1])
 			}
 		}
 	}
-	return swapBytes, ppid
+	return m
+}
+
+// ParseProcStatus extracts VmSwap (in bytes) and PPid from a /proc/[pid]/status reader.
+func ParseProcStatus(r io.Reader) (int64, int) {
+	m := ParseProcMemory(r)
+	return m.SwapBytes, m.PPid
 }
 
 // ParseVmSwap parses VmSwap bytes from an io.Reader representing /proc/[pid]/status.
 func ParseVmSwap(r io.Reader) int64 {
-	swapBytes, _ := ParseProcStatus(r)
-	return swapBytes
+	m := ParseProcMemory(r)
+	return m.SwapBytes
+}
+
+// ReadProcMemory reads VmSwap, VmRSS, and PPid for a given PID.
+func ReadProcMemory(pid int) ProcMemory {
+	f, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
+	if err != nil {
+		return ProcMemory{}
+	}
+	defer f.Close()
+	return ParseProcMemory(f)
 }
 
 // ReadProcStatus reads VmSwap bytes and parent PID for a given PID.
 func ReadProcStatus(pid int) (int64, int) {
-	f, err := os.Open(fmt.Sprintf("/proc/%d/status", pid))
-	if err != nil {
-		return 0, 0
-	}
-	defer f.Close()
-	return ParseProcStatus(f)
+	m := ReadProcMemory(pid)
+	return m.SwapBytes, m.PPid
 }
 
 // ReadVmSwap returns the VmSwap bytes for a given PID.

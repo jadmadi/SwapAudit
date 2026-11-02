@@ -89,6 +89,7 @@ type Item struct {
 	Command            string  `json:"command"`
 	Category           string  `json:"category"`
 	SwapBytes          int64   `json:"swap_bytes"`
+	RSSBytes           int64   `json:"rss_bytes"`
 	SizeBytes          int64   `json:"size_bytes"`
 	EffectiveSizeBytes int64   `json:"effective_size_bytes"`
 	AgeSeconds         *int64  `json:"age_seconds"`
@@ -201,6 +202,7 @@ func toItem(it model.SwapItem, noCommand bool) Item {
 		Command:            it.Command,
 		Category:           string(it.Category),
 		SwapBytes:          it.SwapBytes,
+		RSSBytes:           it.RSSBytes,
 		SizeBytes:          it.SizeBytes,
 		EffectiveSizeBytes: model.ItemSize(it),
 		Cleanable:          it.Cleanable,

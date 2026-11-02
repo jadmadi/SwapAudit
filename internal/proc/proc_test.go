@@ -19,6 +19,7 @@ Tgid:	12345
 Ngid:	0
 Pid:	12345
 PPid:	6789
+VmRSS:	   16384 kB
 VmSwap:	    2048 kB
 `
 	swapBytes, ppid := ParseProcStatus(strings.NewReader(statusContent))
@@ -26,12 +27,23 @@ VmSwap:	    2048 kB
 		t.Errorf("ParseProcStatus() swapBytes = %d, want %d", swapBytes, 2048*1024)
 	}
 	if ppid != 6789 {
-		t.Errorf("ParseProcStatus() ppid = %d, want %d", ppid, 6789)
+		t.Errorf("ParseProcStatus() ppid = %d, want 6789", ppid)
 	}
 
 	vmSwapOnly := ParseVmSwap(strings.NewReader(statusContent))
 	if vmSwapOnly != 2048*1024 {
 		t.Errorf("ParseVmSwap() = %d, want %d", vmSwapOnly, 2048*1024)
+	}
+
+	mem := ParseProcMemory(strings.NewReader(statusContent))
+	if mem.SwapBytes != 2048*1024 {
+		t.Errorf("ParseProcMemory() SwapBytes = %d, want %d", mem.SwapBytes, 2048*1024)
+	}
+	if mem.RSSBytes != 16384*1024 {
+		t.Errorf("ParseProcMemory() RSSBytes = %d, want %d", mem.RSSBytes, 16384*1024)
+	}
+	if mem.PPid != 6789 {
+		t.Errorf("ParseProcMemory() PPid = %d, want %d", mem.PPid, 6789)
 	}
 }
 

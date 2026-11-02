@@ -23,6 +23,7 @@ type SwapItem struct {
 	Command      string
 	Category     Category
 	SwapBytes    int64
+	RSSBytes     int64
 	SizeBytes    int64
 	Age          time.Duration
 	LastActive   time.Duration
@@ -56,5 +57,11 @@ func ItemSize(it SwapItem) int64 {
 	if it.SizeBytes > 0 {
 		return it.SizeBytes
 	}
-	return it.SwapBytes
+	if it.SwapBytes > 0 && it.RSSBytes > 0 {
+		return it.SwapBytes + it.RSSBytes
+	}
+	if it.SwapBytes > 0 {
+		return it.SwapBytes
+	}
+	return it.RSSBytes
 }
