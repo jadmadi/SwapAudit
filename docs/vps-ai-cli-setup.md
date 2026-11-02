@@ -10,18 +10,31 @@ SwapAudit runs with zero runtime dependencies and sub-second execution overhead,
 
 ## 1. Automated Housekeeping via Cron (Recommended)
 
-To keep your VPS clean automatically without rebooting, set up a simple hourly cron job:
+Run the housekeeping job as the user who owns the agent processes. A root cron
+job cannot signal UID 1000 processes: the ownership guard compares against the
+real UID, and root cron has real UID 0.
 
-Create `/etc/cron.hourly/swapaudit`:
+Create a user crontab entry:
+
 ```bash
-#!/bin/sh
-# Prune stale /tmp caches older than 12h and terminate orphaned agent workers
-/usr/local/bin/swapaudit --clean-all -y --no-color > /var/log/swapaudit.log 2>&1
+# Every hour: prune stale /tmp caches and end dormant agent sessions.
+# Orphaned kills stay explicit; do not automate them by default.
+0 * * * * /usr/local/bin/swapaudit --clean-all -y --no-color \
+  >> "$HOME/.cache/swapaudit-cron.log" 2>&1
 ```
 
-Make it executable:
+`--clean-all` covers untouched caches, abandoned runs, and dormant agents. It
+never includes `--clean-orphaned`. If you have verified the orphan heuristic on
+your host, add `--clean-orphaned` explicitly and accept that it is a heuristic.
+
+To empty swap without rebooting, a root job can run the guarded drain. It is
+refused when used swap does not fit in available RAM plus the reserve, so a
+failed attempt is safe:
+
 ```bash
-chmod +x /etc/cron.hourly/swapaudit
+# Root crontab, hourly at minute 17. Check with --dry-run first.
+17 * * * * /usr/local/bin/swapaudit reclaim --drain-swap --yes \
+  >> /var/log/swapaudit-reclaim.log 2>&1
 ```
 
 ---

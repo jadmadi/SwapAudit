@@ -5,11 +5,62 @@ package cache
 import (
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/jadmadi/swapaudit/internal/model"
 )
+
+func TestAllocatedBytesUsesBlocks(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "cache.bin")
+	if err := os.WriteFile(file, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	info, err := os.Lstat(file)
+	if err != nil {
+		t.Fatalf("Lstat failed: %v", err)
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		t.Skip("stat_t unavailable")
+	}
+	want := st.Blocks * 512
+	if got := allocatedBytes(info); got != want {
+		t.Errorf("allocatedBytes() = %d, want %d", got, want)
+	}
+	if got := allocatedBytes(info); got%512 != 0 {
+		t.Errorf("allocatedBytes() = %d, want a multiple of 512", got)
+	}
+}
+
+func TestScanTmpDirectoriesUsesAllocatedBlocks(t *testing.T) {
+	tmpDir := t.TempDir()
+	cacheDir := filepath.Join(tmpDir, "go-buildallocated")
+	if err := os.Mkdir(cacheDir, 0o755); err != nil {
+		t.Fatalf("Mkdir failed: %v", err)
+	}
+	file := filepath.Join(cacheDir, "artifact.bin")
+	if err := os.WriteFile(file, make([]byte, 8192), 0o644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+	oldTime := time.Now().Add(-24 * time.Hour)
+	if err := os.Chtimes(cacheDir, oldTime, oldTime); err != nil {
+		t.Fatalf("Chtimes failed: %v", err)
+	}
+
+	items := ScanTmpDirectoriesIn(tmpDir, time.Now(), 12*time.Hour, nil)
+	if len(items) != 1 {
+		t.Fatalf("items = %d, want 1", len(items))
+	}
+	if items[0].SizeBytes <= 0 {
+		t.Errorf("SizeBytes = %d, want allocated blocks > 0", items[0].SizeBytes)
+	}
+	if items[0].SizeBytes%512 != 0 {
+		t.Errorf("SizeBytes = %d, want a multiple of 512", items[0].SizeBytes)
+	}
+}
 
 func TestMatchTmpPattern(t *testing.T) {
 	patterns := []string{

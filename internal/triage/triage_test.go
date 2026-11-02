@@ -197,6 +197,28 @@ func TestCategorizeProcess(t *testing.T) {
 			wantCategory:  model.CatDormantAgent,
 			wantCleanable: true,
 		},
+		{
+			name:          "ollama serve is not an agent",
+			comm:          "ollama",
+			argv:          []string{"/usr/local/bin/ollama", "serve"},
+			pid:           116,
+			ppid:          1,
+			isOrphaned:    true,
+			lastActive:    10 * time.Minute,
+			wantCategory:  model.CatActiveProcess,
+			wantCleanable: false,
+		},
+		{
+			name:          "generic serve is not an agent",
+			comm:          "python3",
+			argv:          []string{"python3", "-m", "http.server", "serve"},
+			pid:           117,
+			ppid:          1,
+			isOrphaned:    true,
+			lastActive:    3 * time.Hour,
+			wantCategory:  model.CatActiveProcess,
+			wantCleanable: false,
+		},
 	}
 
 	for _, tt := range tests {

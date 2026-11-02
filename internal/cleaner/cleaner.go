@@ -18,6 +18,10 @@ import (
 
 var defaultStdinReader = bufio.NewReader(os.Stdin)
 
+// readProcUID is a seam so the ownership guard can be tested without
+// spawning a process owned by another user.
+var readProcUID = proc.ReadProcUID
+
 // AskConfirmation prompts the user via stdin for [y/N] confirmation.
 func AskConfirmation(prompt string) bool {
 	return AskConfirmationReader(defaultStdinReader, prompt)
@@ -156,6 +160,15 @@ func KillProcessTargets(targets []model.SwapItem, groupTitle, prompt string, dry
 			}
 			if currTicks != p.StartTicks {
 				fmt.Printf("  %s%s Skipped PID %d (%s): PID was reused by another process\n", prefix, term.Yellow(term.GlyphWarn()), p.PID, p.Name)
+				continue
+			}
+			targetUID, uidErr := readProcUID(p.PID)
+			if uidErr != nil {
+				fmt.Printf("  %s%s Skipped PID %d (%s): UID is unreadable\n", prefix, term.Yellow(term.GlyphWarn()), p.PID, p.Name)
+				continue
+			}
+			if targetUID != uint32(os.Getuid()) {
+				fmt.Printf("  %s%s Skipped PID %d (%s): not owned by current user\n", prefix, term.Yellow(term.GlyphWarn()), p.PID, p.Name)
 				continue
 			}
 			if err := syscall.Kill(p.PID, syscall.SIGTERM); err != nil {

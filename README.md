@@ -111,6 +111,11 @@ flowchart TD
 - Shell flood protection: aggregates dozens of idle subshells into single compact rows.
 - Kernel start-ticks verification: validates process start ticks immediately before sending SIGTERM
   to guarantee immunity against PID reuse kills.
+- Real-UID ownership: never signals a process owned by another user.
+- Fail-closed orphan evidence: systemd services and processes without a controlling
+  terminal are never treated as orphans.
+- Guarded swap drain: `swapoff`/`swapon` per device with feasibility math, a RAM
+  reserve, and mandatory re-enable before the next device.
 - Strict path confinement: only prunes files inside `/tmp` or `/var/tmp` owned by your active user UID.
 - Symlink rejection: skips symlinks at top-level and nested walk boundaries to protect real files.
 - Stream size limits: self-updater bounds downloads to 50MB and checksum files to 1MB.
@@ -258,6 +263,43 @@ Print version information:
 swapaudit --version
 ```
 
+## Cleaning swap and RAM without rebooting
+
+Swap does not require a reboot. The kernel only faults a swapped page back into
+RAM when it is touched. To empty swap while keeping the machine up, the
+supported mechanism is a drain cycle: `swapoff <device>` to fault every page
+back in, then `swapon <device>` to re-enable the now-empty area.
+
+`swapaudit reclaim` runs that cycle with a feasibility check, a RAM reserve, and
+a mandatory re-enable for every device:
+
+```bash
+swapaudit reclaim --dry-run          # read-only plan, no root required
+sudo swapaudit reclaim --drain-swap  # drain swap back into RAM
+sudo swapaudit reclaim --drop-caches # release clean page cache
+```
+
+The plan refuses to start unless:
+
+```text
+MemAvailable - used swap - reserve >= 0
+```
+
+The default reserve is `max(512 MiB, 10% of RAM)`. If swap is already empty,
+the command performs no `swapoff`/`swapon` churn. If the full swap footprint
+does not fit, the planner drains the largest safe subset and reports the bytes
+that remain in swap. zram is skipped by default because draining it
+decompresses pages into RAM and usually increases pressure. Use
+`--include-zram` only when you accept that trade-off.
+
+Every device is restored before the next device is disabled. A failed or
+interrupted restore exits `3` and prints the exact `sudo swapon` recovery
+command. `--json` emits a receipt with before/after swap, RAM, page cache, and
+per-device outcomes. No daemon, systemd unit, pidfile, or lock file is created.
+
+See [docs/reclaim.md](docs/reclaim.md) for the math, exit codes, zram notes, and
+a disposable swap-file verification protocol.
+
 ## Interactive picker
 
 When both stdin and stdout are terminals, the report ends with a four-row action
@@ -393,6 +435,12 @@ swapaudit upgrade
 | Command or flag         | Default  | Description                                                           |
 | :---------------------- | :------- | :-------------------------------------------------------------------- |
 | upgrade                 | -        | Check GitHub releases and upgrade swapaudit in place                  |
+| reclaim                 | -        | Drain swap into RAM and optionally drop page cache                    |
+| --drain-swap            | true     | Drain active swap devices back into RAM (reclaim default)             |
+| --drop-caches           | false    | Sync and drop clean page cache and dentries                           |
+| --include-zram          | false    | Allow draining zram (usually increases RAM use)                       |
+| --reserve <size>        | 10% RAM  | RAM kept available after the drain (floor 512MiB)                     |
+| --timeout <duration>    | 5m       | Per-command timeout for swapoff/swapon (10s..30m)                     |
 | --sort <size\|swap\|ram\|age> | size  | Sort column for occupant tables: size, swap, ram, or age               |
 | --limit <N>             | 12       | Maximum rows to display in the main occupants table                   |
 | --all                   | false    | Show all individual processes without grouping                        |
@@ -401,7 +449,7 @@ swapaudit upgrade
 | --clean-dormant         | false    | Terminate dormant agent sessions idle beyond threshold                |
 | --clean-orphaned        | false    | Terminate orphaned agent sessions whose parent shell died             |
 | --clean-tmp             | false    | Prune all cleanable /tmp caches (untouched and abandoned)             |
-| --clean-all             | false    | Run all safe cleanups (untouched, abandoned, dormant, orphaned)       |
+| --clean-all             | false    | Run safe cleanups (untouched, abandoned, dormant)                     |
 | --dry-run               | false    | Simulate actions without deleting files or killing processes          |
 | -y, --yes               | false    | Automatically answer yes to confirmation prompts                      |
 | --max-age <duration>    | 12h      | Age cutoff duration for stale /tmp directories                        |
@@ -426,7 +474,8 @@ The project follows a standard modular Go architecture:
 - `internal/live`: headless sampler, bounded ring, OLS estimator, and raw trace recorder.
 - `internal/model`: shared data types for memory, processes, and categories.
 - `internal/notify`: probed notification transports with argv-only execution.
-- `internal/proc`: kernel `/proc` parsers for status, meminfo, sched, and cmdline.
+- `internal/proc`: kernel `/proc` parsers for status, meminfo, swaps, PSI, sched, and cmdline.
+- `internal/reclaim`: swap-drain planner, feasibility math, guarded executor, and receipt.
 - `internal/snapshot`: versioned machine-readable schema and pure document builder.
 - `internal/term`: terminal layout, ANSI color engine, and text width calculations.
 - `internal/watch`: danger state machine, sustain/hysteresis/cooldown, and payload rendering.
