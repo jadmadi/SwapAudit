@@ -617,7 +617,7 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "  --tmp-pattern <pattern>   Additional /tmp directory glob pattern (repeatable)")
 	fmt.Fprintln(w, "  --no-color                Disable ANSI color styling")
 	fmt.Fprintln(w, "  --ascii                   Use plain ASCII box borders instead of Unicode glyphs")
-	fmt.Fprintln(w, "  --no-update-check         Skip background 24-hour release check")
+	fmt.Fprintln(w, "  --check-updates           Check GitHub for a newer release (one request)")
 	fmt.Fprintln(w, "  --json                    Emit one stable machine-readable JSON document")
 	fmt.Fprintln(w, "  --no-command              Omit command lines from JSON output (requires --json)")
 	fmt.Fprintln(w, "  --interactive             Force the interactive action picker (requires a terminal)")

@@ -801,7 +801,7 @@ func Run(args []string) int {
 		noColor        = fs.Bool("no-color", false, "Disable colored output")
 		ascii          = fs.Bool("ascii", false, "Use plain ASCII characters instead of Unicode glyphs")
 		showVersion    = fs.Bool("version", false, "Print swapaudit version and exit")
-		noUpdateCheck  = fs.Bool("no-update-check", false, "Disable daily release update check")
+		checkUpdates   = fs.Bool("check-updates", false, "Check GitHub for a newer release (one request; see PRIVACY.md)")
 		jsonOutput     = fs.Bool("json", false, "Emit one machine-readable JSON document and exit")
 		noCommand      = fs.Bool("no-command", false, "Omit command lines from JSON output (requires --json)")
 		interactive    = fs.Bool("interactive", false, "Force the interactive action picker (requires a terminal)")
@@ -857,7 +857,7 @@ func Run(args []string) int {
 	var updateDone chan struct{}
 	var updateNotice *updater.UpdateInfo
 
-	if !*noUpdateCheck && os.Getenv("SWAPAUDIT_NO_UPDATE_CHECK") == "" && os.Getenv("CI") == "" {
+	if *checkUpdates || os.Getenv("SWAPAUDIT_CHECK_UPDATES") == "1" {
 		if info := updater.GetCachedUpdate(version.Version); info != nil {
 			cachedNotice = info
 		} else {

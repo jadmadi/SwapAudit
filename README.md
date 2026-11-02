@@ -59,6 +59,7 @@ swapaudit --clean-all --dry-run
 ```
 
 Full install options: [Installation methods](#installation-methods).
+Roadmap and the current feature freeze: [ROADMAP.md](ROADMAP.md).
 
 ## Why swapaudit exists
 
@@ -464,18 +465,16 @@ when combined with `--json`.
 
 ## In-place upgrades and release checks
 
-Automated daily background check:
+Opt-in release check:
 
-swapaudit checks GitHub releases in the background once every 24 hours. When an update exists,
-it prints a subtle notice after the audit report completes.
-
-Disable update check:
-
-Pass `--no-update-check` or set `SWAPAUDIT_NO_UPDATE_CHECK=1` in your shell environment:
+The default audit makes no network requests. Pass `--check-updates` or set
+`SWAPAUDIT_CHECK_UPDATES=1` to check GitHub once for a newer release:
 
 ```bash
-swapaudit --no-update-check
+swapaudit --check-updates
 ```
+
+The check performs one request and prints a subtle notice after the report.
 
 In-place self-upgrade:
 
@@ -512,7 +511,7 @@ swapaudit upgrade
 | --max-age <duration>    | 12h      | Age cutoff duration for stale /tmp directories                        |
 | --idle-threshold <dur>  | 2h       | Idle duration threshold for classifying dormant agents                |
 | --tmp-pattern <pattern> | (list)   | Additional pattern for temporary artifacts in /tmp (repeatable)       |
-| --no-update-check       | false    | Skip background 24-hour release check                                 |
+| --check-updates         | false    | Check GitHub for a newer release (one request)                        |
 | --json                  | false    | Emit one stable machine-readable JSON document                        |
 | --no-command            | false    | Omit command lines from JSON output (requires --json)                 |
 | --ascii                 | false    | Use plain ASCII glyphs instead of Unicode box characters              |

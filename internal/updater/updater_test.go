@@ -199,8 +199,6 @@ func TestCopyFileAtomic(t *testing.T) {
 func TestGetCachedUpdate(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", tmpDir)
-	t.Setenv("SWAPAUDIT_NO_UPDATE_CHECK", "")
-	t.Setenv("CI", "")
 
 	// 1. When no state exists -> nil
 	if info := GetCachedUpdate("v0.1.0"); info != nil {

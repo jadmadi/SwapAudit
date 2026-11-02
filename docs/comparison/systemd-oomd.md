@@ -28,7 +28,7 @@ memory, and what is safe to reclaim?"*.
 | Privileges | Normal user | `systemd-oom` user with `CAP_KILL` and `CAP_DAC_OVERRIDE` |
 | Footprint | One-shot, sub-second, no idle cost | Small daemon, `MemoryMin`/`MemoryLow` 64M, `OOMScoreAdjust=-900` |
 | Observability | Rich terminal report with categories and reclaim totals | Journal logs and `oomctl dump` |
-| Configuration | CLI flags, `SWAPAUDIT_NO_UPDATE_CHECK` | Unit properties, `oomd.conf`, drop-ins |
+| Configuration | CLI flags, `SWAPAUDIT_CHECK_UPDATES` | Unit properties, `oomd.conf`, drop-ins |
 | Distribution | Static binary, `go install`, self-upgrade | Built into systemd 247+; default on Fedora 34+ and Ubuntu 22.04 Desktop |
 | Implementation | Go standard library, zero dependencies | C, part of systemd |
 | License | WaqfDPL-1.0 or AGPL-3.0 | LGPL-2.1-or-later |

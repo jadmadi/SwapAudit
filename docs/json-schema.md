@@ -145,7 +145,7 @@ failure, and `2` flag conflict.
 ### Shell statusline
 
 ```bash
-swapaudit --json --no-command --no-update-check |
+swapaudit --json --no-command |
   python3 -c 'import json,sys; s=json.load(sys.stdin); t=s["totals"]; print(f"{t[\"cleanable_bytes\"]/2**20:.0f} MiB cleanable / {t[\"items\"]} items")'
 ```
 
@@ -161,7 +161,7 @@ Fail a job when more than 1 GiB is reclaimable:
 
 ```bash
 set -e
-swapaudit --json --no-command --no-update-check > snapshot.json
+swapaudit --json --no-command > snapshot.json
 python3 - <<'PY'
 import json
 limit = 1024 ** 3
