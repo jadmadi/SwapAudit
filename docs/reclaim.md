@@ -11,6 +11,9 @@ swap-drain cycle:
 `swapaudit reclaim` performs this cycle with a feasibility check, a reserve,
 per-device restore, and a measured receipt.
 
+Each device is briefly disabled while it is re-enabled. The machine stays up,
+but this is not zero downtime.
+
 ## Quick start
 
 Read-only plan. No root and no mutation:

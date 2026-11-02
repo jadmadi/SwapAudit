@@ -184,6 +184,8 @@ Low overhead:
   checks that actually run are in `docs/safety.md`.
 - Agent detection covers a fixed runtime list plus MCP heuristics, not every
   agent.
+- The swap drain briefly disables each device while it is re-enabled. The
+  machine stays up, but this is not zero downtime.
 - RAM used relies on `MemAvailable` (Linux 3.14+).
 
 ## Installation methods
