@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
 ### Added
 - `swapaudit reclaim` with a guarded `swapoff`/`swapon` drain that empties swap
   without rebooting and a `--drop-caches` page-cache reclaim.
@@ -69,6 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Refreshed goal certification records and audit receipts after repository
   maintenance.
+
+### Removed
+- Runtime detection and default tmp patterns for an unvetted third-party AI CLI.
 
 ## [0.1.0] - 2026-10-19
 
