@@ -1,7 +1,7 @@
 {
   "goal_slug": "orphan-visibility-safety",
   "certified_at": "2026-10-20T06:20:58.389332346Z",
-  "certified_by": "command-code",
+  "certified_by": "jadmadi",
   "evidence_file": "/home/jad/scripts/active/swapaudit/goals/orphan-visibility-safety/evidence.md",
   "note": "Implementation, tests, and goal-specific evidence verified.",
   "verified": true,
