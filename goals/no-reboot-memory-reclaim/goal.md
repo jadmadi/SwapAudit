@@ -4,7 +4,7 @@
 - **Registered By**: Jad Madi, 2026-11-02
 - **Spec Audited By**: Jad Madi plan review, 2026-11-02
 - **Implemented By**: Jad Madi, commit `a4c685c`, 2026-11-02
-- **Mystery Audited By**: @mystery-auditor | Report: `receipt_no-reboot-memory-reclaim_1793630336`
+- **Mystery Audited By**: @mystery-auditor | Report: `receipt_no-reboot-memory-reclaim_1793637467`
 ## Goal Description
 Add a root-gated reclaim command that drains active swap devices back into RAM and optionally drops clean page cache, with feasibility math, per-device restore guarantees, zram awareness, and live receipts.
 
