@@ -81,6 +81,13 @@ They cannot answer three triage questions:
 The audit answers all three in one pass. For comparisons with earlyoom,
 systemd-oomd, zram, smem, and vmstat, see [docs/comparison/](docs/comparison/).
 
+## How it works
+
+![SwapAudit flow: read-only audit, attribution, and explicit reclaim](docs/assets/swapaudit-overview.svg)
+
+The audit reads kernel counters and `/tmp` metadata. Cleanup is a separate,
+explicit step with a dry-run preview and a JSON receipt.
+
 ## Architecture and triage pipeline
 
 Kernel memory subsystems interact across physical RAM, swap space, and tmpfs mounts:

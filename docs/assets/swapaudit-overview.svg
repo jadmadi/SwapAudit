@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">How SwapAudit works</title>
+  <desc id="desc">A three-stage flow: a read-only audit of kernel counters and /tmp metadata, attribution of swap and cache usage to processes and caches, then explicit guarded reclaim with a dry-run and a JSON receipt.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#656d76"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .panel { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1; }
+      .title { font: 700 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+      .sub { font: 400 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #656d76; }
+      .head { font: 700 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: 0.08em; }
+      .code { font: 400 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #1f2328; }
+      .muted { font: 400 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #656d76; }
+      .foot { font: 400 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #656d76; }
+      .audit { fill: #1a7f37; }
+      .attribute { fill: #0969da; }
+      .reclaim { fill: #9a6700; }
+      .rule-audit { stroke: #1a7f37; }
+      .rule-attribute { stroke: #0969da; }
+      .rule-reclaim { stroke: #9a6700; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="960" height="420" rx="12"/>
+  <rect x="0.5" y="0.5" width="959" height="419" rx="12" fill="none" stroke="#d0d7de"/>
+
+  <text class="title" x="28" y="42">How SwapAudit works</text>
+  <text class="sub" x="28" y="66">Read-only audit first. Reclaim is a separate, explicit step.</text>
+
+  <!-- Panel 1 -->
+  <rect class="panel" x="24" y="96" width="280" height="238" rx="8"/>
+  <text class="head audit" x="42" y="124">1  AUDIT</text>
+  <line class="rule-audit" x1="42" y1="134" x2="286" y2="134" stroke-width="2"/>
+  <text class="code" x="42" y="160">/proc/meminfo</text>
+  <text class="code" x="42" y="184">/proc/swaps</text>
+  <text class="code" x="42" y="208">/proc/[pid]/status</text>
+  <text class="code" x="42" y="232">/tmp size + mtime</text>
+  <text class="muted" x="42" y="268">read-only</text>
+  <text class="muted" x="42" y="292">no network</text>
+
+  <!-- Panel 2 -->
+  <rect class="panel" x="328" y="96" width="280" height="238" rx="8"/>
+  <text class="head attribute" x="346" y="124">2  ATTRIBUTE</text>
+  <line class="rule-attribute" x1="346" y1="134" x2="590" y2="134" stroke-width="2"/>
+  <text class="code" x="346" y="160">VmSwap per process</text>
+  <text class="code" x="346" y="184">cache size + idle</text>
+  <text class="muted" x="346" y="216">dormant agents</text>
+  <text class="muted" x="346" y="240">orphaned agents</text>
+  <text class="muted" x="346" y="264">untouched caches</text>
+  <text class="muted" x="346" y="288">abandoned runs</text>
+
+  <!-- Panel 3 -->
+  <rect class="panel" x="632" y="96" width="304" height="238" rx="8"/>
+  <text class="head reclaim" x="650" y="124">3  RECLAIM</text>
+  <line class="rule-reclaim" x1="650" y1="134" x2="918" y2="134" stroke-width="2"/>
+  <text class="code" x="650" y="160">--dry-run preview</text>
+  <text class="code" x="650" y="184">UID + start ticks</text>
+  <text class="code" x="650" y="208">path + symlink checks</text>
+  <text class="code" x="650" y="232">swapoff / swapon</text>
+  <text class="muted" x="650" y="256">per device, restored</text>
+  <text class="code" x="650" y="288">JSON receipt</text>
+
+  <!-- Arrows -->
+  <line x1="304" y1="215" x2="320" y2="215" stroke="#656d76" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="608" y1="215" x2="624" y2="215" stroke="#656d76" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Footer -->
+  <rect class="panel" x="24" y="352" width="912" height="40" rx="8"/>
+  <text class="foot" x="42" y="377">Linux amd64 · arm64 · armv7 · riscv64</text>
+  <text class="foot" x="918" y="377" text-anchor="end">No daemon · No account · No telemetry</text>
+</svg>
