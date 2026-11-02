@@ -17,7 +17,7 @@
   session; the executor contract is proven with injected fakes and a live read-only dry-run.
 
 ## Safety Regression Evidence
-- `git diff a078f96 HEAD -- internal/` shows `internal/cache/liveness.go` (-183),
+- `git diff b7a2ae0 HEAD -- internal/` shows `internal/cache/liveness.go` (-183),
   `internal/cleaner/cleaner.go` (556 -> 266 lines), and the orphan classifier removed.
 - `docs/safety.md` still promises `--all-users`, `--clean-orphaned-caches`,
   `--explain-caches`, non-TTY exit 2, UID checks, and open-handle checks. None exist at HEAD.

@@ -1,7 +1,7 @@
 {
   "version": "sila/audit-receipt/v1",
   "goal_slug": "unified-ram-swap-audit",
-  "commit_sha": "1db277890ecb64b133914e33d0dd425430edeea6",
+  "commit_sha": "57d3db8ded352d4d6fc4b2cbfcdcda0773b9f80d",
   "spec_hash": "b584868cd739b891c50b0c40d734ea96c73fd951268991e4906fd43df4ca69e4",
   "sandbox_nonce": "033df1de3caa997c",
   "candidate_selection": "A",

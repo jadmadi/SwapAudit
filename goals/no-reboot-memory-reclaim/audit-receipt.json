@@ -1,7 +1,7 @@
 {
   "version": "sila/audit-receipt/v1",
   "goal_slug": "no-reboot-memory-reclaim",
-  "commit_sha": "5c570d510edbe67b1b6e77e06dcfb495d69731ee",
+  "commit_sha": "3491dfafbe01ccf99437d75fb94818d7786f2ed6",
   "spec_hash": "6a1410f0a13a793e921cd903d0a39102f881304d0ea32a380062f155035a1149",
   "sandbox_nonce": "2824027ded4d0141",
   "candidate_selection": "A",

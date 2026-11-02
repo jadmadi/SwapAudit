@@ -9,9 +9,9 @@ Created: 2026-11-02, updated 2026-11-02 after the live drain
 Complete and verified. The live `swapoff`/`swapon` drain ran on this host and
 passed every check.
 
-- Feature commit: `64c451f`
-- First certification: `da51516`
-- Live evidence commit: `5c570d5`
+- Feature commit: `a4c685c`
+- First certification: `2f566ed`
+- Live evidence commit: `3491dfa`
 - Tests: `go test -count=1 -race ./...` pass
 - Gate: `sila gate` pass
 - Sila: implemented / verified, `unverified_count: 0`

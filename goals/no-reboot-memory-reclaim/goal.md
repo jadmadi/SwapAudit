@@ -3,7 +3,7 @@
 ## Chain of Custody (Isnad)
 - **Registered By**: Jad Madi, 2026-11-02
 - **Spec Audited By**: Jad Madi plan review, 2026-11-02
-- **Implemented By**: Jad Madi, commit `64c451f`, 2026-11-02
+- **Implemented By**: Jad Madi, commit `a4c685c`, 2026-11-02
 - **Mystery Audited By**: @mystery-auditor | Report: `receipt_no-reboot-memory-reclaim_1793630336`
 ## Goal Description
 Add a root-gated reclaim command that drains active swap devices back into RAM and optionally drops clean page cache, with feasibility math, per-device restore guarantees, zram awareness, and live receipts.
@@ -15,7 +15,7 @@ Add a root-gated reclaim command that drains active swap devices back into RAM a
 - The report showed aggregate swap only. It had no per-device used bytes, no
   page-cache reclaim estimate, and no PSI pressure.
 - `docs/safety.md` promised UID checks, non-TTY exit 2, and fail-closed orphan
-  evidence that were absent from the code after the 303e102 merge.
+  evidence that were absent from the code after the fab5560 merge.
 - Live false positive: `ollama serve` (UID 999, PPID 1,
   `/system.slice/ollama.service`, tty 0) was classified as an abandoned agent
   and was killable with `--clean-orphaned`.

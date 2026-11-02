@@ -8,7 +8,7 @@
   "facts_passed": 1,
   "facts_total": 1,
   "evidence_kind": "review_document",
-  "commit_sha": "1db277890ecb64b133914e33d0dd425430edeea6",
+  "commit_sha": "57d3db8ded352d4d6fc4b2cbfcdcda0773b9f80d",
   "memory": {
     "required": false,
     "status": "legacy_skipped",

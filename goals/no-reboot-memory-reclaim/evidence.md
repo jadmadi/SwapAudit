@@ -23,10 +23,10 @@
 
 ### Safety regressions found during the audit
 6. `docs/safety.md` promised UID checks, non-TTY exit `2`, fail-closed orphan
-   evidence, and cache liveness checks. `git diff a078f96 HEAD -- internal/`
+   evidence, and cache liveness checks. `git diff b7a2ae0 HEAD -- internal/`
    shows `internal/cache/liveness.go` deleted (-183 lines),
    `internal/cleaner/cleaner.go` reduced from 556 to 266 lines, and the orphan
-   classifier removed. The 303e102 merge dropped the safety branch.
+   classifier removed. The fab5560 merge dropped the safety branch.
 7. Live false positive: PID 328044 `ollama serve` had UID 999, PPID 1,
    `/system.slice/ollama.service`, and `tty_nr=0`. Current triage classified it
    as `abandoned-agents` because `argv` contained `serve` and
