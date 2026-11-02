@@ -30,13 +30,15 @@ func CategorizeProcess(comm string, argv []string, pid, ppid int, isOrphaned boo
 
 	isAgent := comm == "agy" || comm == "devin" || comm == "chrome-devtools-mcp" || comm == "chrome-devtools" ||
 		binName == "agy" || binName == "devin" || binName == "antigravity" || binName == "chrome-devtools-mcp" ||
-		comm == "muse" || strings.HasPrefix(binName, "muse-bin") || comm == "opencode" || binName == "opencode"
+		comm == "muse" || strings.HasPrefix(binName, "muse-bin") || comm == "opencode" || binName == "opencode" ||
+		comm == "commandcode" || binName == "commandcode" || binName == "command-code" || binName == "cmd"
 
 	if !isAgent {
 		for _, arg := range argv {
 			baseArg := filepath.Base(arg)
 			if arg == "--conversation" || arg == "chrome-devtools-mcp" || baseArg == "chrome-devtools-mcp" ||
 				strings.Contains(arg, "mcp") || strings.Contains(baseArg, "mcp") ||
+				strings.Contains(arg, "commandcode") || strings.Contains(arg, "command-code") ||
 				arg == "--stdio" || arg == "serve" || arg == "--service" {
 				isAgent = true
 				break
